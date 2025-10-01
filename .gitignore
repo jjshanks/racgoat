@@ -36,3 +36,5 @@ htmlcov/
 # Raccoon's treasure cache (jk, just temp files)
 *.tmp
 *.log
+
+*local*
