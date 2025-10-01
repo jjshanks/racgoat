@@ -8,6 +8,8 @@ from textual.containers import Container, Vertical
 from textual.widgets import Header, Footer, Static, Button, Label
 from textual.binding import Binding
 
+from racgoat.parser.diff_parser import parse_diff
+
 
 class RacGoatApp(App):
     """
@@ -57,60 +59,72 @@ class RacGoatApp(App):
 
     BINDINGS = [
         Binding("q", "quit", "Quit", show=True),
-        ("ctrl+c", "quit", "Quit"),
+        Binding("ctrl+t", "toggle_raccoon_mode", "🦝 Raccoon", show=True),
     ]
 
     # Hidden easter egg flag - shhh, it's a secret! 🦝
     raccoon_mode_active = False
+
+    def __init__(self, diff_file: str | None = None, output_file: str = "review.md"):
+        """Initialize the RacGoat app with optional diff file.
+
+        Args:
+            diff_file: Path to file containing git diff, or None for demo mode
+            output_file: Path for output review file (default: review.md)
+        """
+        super().__init__()
+        self.diff_file = diff_file
+        self.output_file = output_file
+        self.diff_input = None
+        self.diff_summary = None
+
+        if diff_file:
+            # Load diff from file
+            try:
+                with open(diff_file, 'r') as f:
+                    self.diff_input = f.read()
+                # Parse the diff input
+                self.diff_summary = parse_diff(self.diff_input.splitlines(keepends=True))
+            except (OSError, IOError) as e:
+                # File read error - will show error in UI
+                self.diff_input = ""
+                self.diff_summary = None
 
     def compose(self) -> ComposeResult:
         """Compose the UI layout."""
         yield Header()
         with Container(id="main-container"):
             yield Static("🦝 RacGoat Adventures 🐐", id="title")
-            yield Label("Don't be a 'scapegoat' – let's code!", id="message")
+            yield Label("", id="message")
+            yield Static("", id="diff-display")
             yield Static("", id="easter-egg")  # Hidden easter egg area
-            yield Button("Quit", variant="error", id="quit-btn")
         yield Footer()
 
     def on_mount(self) -> None:
         """Set the app title when mounted."""
         self.title = "RacGoat - Trash Panda meets Mountain Climber"
-        self.sub_title = "Press 'q' to quit | Type 'trash' for a surprise 🦝"
+        self.sub_title = "Press 'q' to quit | Ctrl+T for raccoon mode 🦝"
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle button press events."""
-        if event.button.id == "quit-btn":
-            self.exit()
+        # Update the display based on whether we have diff data
+        if self.diff_summary and not self.diff_summary.is_empty:
+            message_widget = self.query_one("#message", Label)
+            message_widget.update(f"Found {len(self.diff_summary.files)} file(s) in diff:")
 
-    def on_key(self, event) -> None:
+            diff_widget = self.query_one("#diff-display", Static)
+            diff_widget.update(self.diff_summary.format_output())
+        else:
+            message_widget = self.query_one("#message", Label)
+            if self.diff_input is not None:
+                message_widget.update("No changes found in diff (all filtered or empty)")
+            else:
+                message_widget.update("Don't be a 'scapegoat' – let's code!")
+
+    def action_toggle_raccoon_mode(self) -> None:
         """
-        Handle keyboard input for easter eggs.
-
-        This is where the raccoon magic happens! 🦝✨
-        """
-        # Build up a string from key presses to detect "trash"
-        if not hasattr(self, '_key_buffer'):
-            self._key_buffer = ""
-
-        # Add character to buffer (only letters)
-        if len(event.key) == 1 and event.key.isalpha():
-            self._key_buffer += event.key.lower()
-
-            # Keep buffer reasonable size (goats don't hoard like raccoons!)
-            if len(self._key_buffer) > 10:
-                self._key_buffer = self._key_buffer[-10:]
-
-            # Check for easter egg trigger
-            if "trash" in self._key_buffer:
-                self.activate_raccoon_mode()
-                self._key_buffer = ""  # Reset buffer after activation
-
-    def activate_raccoon_mode(self) -> None:
-        """
-        Activate secret raccoon mode! 🦝
+        Toggle raccoon mode! 🦝
 
         Because every good app needs a trash panda easter egg!
+        Triggered by Ctrl+T.
         """
         if not self.raccoon_mode_active:
             self.raccoon_mode_active = True
@@ -125,15 +139,28 @@ class RacGoatApp(App):
                        severity="information", timeout=5)
 
 
-def main():
+def main(diff_file: str | None = None, output_file: str = "review.md"):
     """
     Entry point for the RacGoat application.
 
+    Args:
+        diff_file: Optional path to file containing git diff
+        output_file: Path for output review file
+
     Let's get this goat on the road! 🐐
     """
-    app = RacGoatApp()
-    app.run()
+    app = RacGoatApp(diff_file=diff_file, output_file=output_file)
+    app.run(mouse=False)
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    from racgoat.cli.args import parse_arguments
+
+    # Parse CLI arguments
+    args = parse_arguments()
+
+    # Determine diff source
+    diff_path = getattr(args, 'diff_file', None)
+
+    main(diff_file=diff_path, output_file=args.output)

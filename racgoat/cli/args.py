@@ -1,0 +1,31 @@
+"""CLI argument parsing."""
+
+import argparse
+
+
+def parse_arguments() -> argparse.Namespace:
+    """Parse command-line arguments for the diff processor.
+
+    Returns:
+        argparse.Namespace with parsed arguments including:
+            - output: Output file path (default: 'review.md')
+            - diff_file: Internal flag for passing temp file from parent process
+
+    Raises:
+        SystemExit: If invalid arguments provided (via argparse).
+    """
+    parser = argparse.ArgumentParser(
+        description="Parse git diff and generate summary",
+        prog="racgoat"
+    )
+    parser.add_argument(
+        '-o', '--output',
+        default='review.md',
+        help='Output file path (default: review.md)'
+    )
+    parser.add_argument(
+        '--diff-file',
+        dest='diff_file',
+        help=argparse.SUPPRESS  # Hidden internal argument
+    )
+    return parser.parse_args()

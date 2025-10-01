@@ -33,21 +33,30 @@ cd racgoat
 # Install dependencies using UV
 uv sync
 
-# Run the application
-uv run python -m racgoat
+# Run the application with a git diff
+git diff | uv run python -m racgoat
 ```
 
-That's it! The raccoon and goat are ready to help you code! 🦝🐐
+That's it! The raccoon and goat are ready to help you review! 🦝🐐
 
 ---
 
 ## 🎮 Usage
 
-Once you run the app, you'll see the RacGoat TUI interface:
+RacGoat reads git diffs from stdin and displays a summary:
 
-1. Navigate using your keyboard
-2. Press `q` to quit
-3. Try typing "trash" for a surprise... 🦝👀
+```bash
+# Review staged changes
+git diff --cached | uv run python -m racgoat
+
+# Review unstaged changes
+git diff | uv run python -m racgoat
+
+# Review changes on a branch
+git diff main...feature-branch | uv run python -m racgoat
+```
+
+Press `q` to quit the app.
 
 ---
 
