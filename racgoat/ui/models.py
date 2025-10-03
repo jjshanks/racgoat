@@ -27,6 +27,32 @@ class PaneFocusState(Enum):
     DIFF = "diff"
 
 
+class ApplicationMode(Enum):
+    """Represents the current interaction mode of the TUI.
+
+    The raccoon switches between its normal scavenging mode and its
+    selective treasure-hoarding mode!
+
+    Values:
+        NORMAL: Standard navigation and commenting (default mode)
+        SELECT: Range selection active (user is marking lines for a range comment)
+
+    State Transitions:
+        NORMAL --[user presses 's' in diff pane]--> SELECT
+        SELECT --[user presses Esc]--> NORMAL
+        SELECT --[user presses Enter after selecting range]--> NORMAL (after creating comment)
+        SELECT --[user cancels input prompt]--> NORMAL (no comment created)
+
+    Constraints:
+        - File navigation is disabled in SELECT mode
+        - Single-line and file-level comment actions disabled in SELECT mode
+        - Only arrow keys, Enter, and Esc are active in SELECT mode
+    """
+
+    NORMAL = "normal"
+    SELECT = "select"
+
+
 @dataclass
 class FilesListItem:
     """Represents a single item in the Files Pane list view.
@@ -99,3 +125,59 @@ class FilesListItem:
         end_chars = available - start_chars
 
         return f"{path[:start_chars]}...{path[-end_chars:]}"
+
+
+@dataclass
+class CommentMarker:
+    """Visual indicator for comments in the diff pane gutter.
+
+    Like a shiny wrapper on the raccoon's favorite trash can - it marks
+    the spot where wisdom is stashed!
+
+    Attributes:
+        symbol: Character to display ("*" for single comment, "**" for overlapping)
+        style: Rich Text style string (e.g., "[yellow]*[/yellow]")
+        line_number: Which line this marker appears on
+        comment_count: Number of comments on this line (for overlap indication)
+
+    Validation:
+        - symbol defaults to "*" if comment_count == 1, "**" if comment_count > 1
+        - style varies based on comment_count (e.g., yellow for single, red for overlapping)
+        - line_number must be a valid post-change line number from the diff
+    """
+
+    symbol: str
+    style: str
+    line_number: int
+    comment_count: int
+
+    @property
+    def has_overlap(self) -> bool:
+        """True if comment_count > 1."""
+        return self.comment_count > 1
+
+    @staticmethod
+    def from_count(line_number: int, comment_count: int) -> "CommentMarker":
+        """Create CommentMarker from line number and comment count.
+
+        Args:
+            line_number: Line number for this marker
+            comment_count: Number of comments on this line
+
+        Returns:
+            CommentMarker with appropriate symbol and style
+        """
+        if comment_count == 1:
+            return CommentMarker(
+                symbol="*",
+                style="yellow",
+                line_number=line_number,
+                comment_count=comment_count
+            )
+        else:  # comment_count > 1 (overlap)
+            return CommentMarker(
+                symbol="**",
+                style="red",
+                line_number=line_number,
+                comment_count=comment_count
+            )

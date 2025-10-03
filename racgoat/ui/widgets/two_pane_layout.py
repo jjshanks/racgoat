@@ -3,6 +3,8 @@
 Like a raccoon's den with two rooms - one for organizing, one for examining!
 """
 
+from typing import TYPE_CHECKING
+
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.binding import Binding
@@ -10,6 +12,9 @@ from textual.binding import Binding
 from racgoat.parser.models import DiffSummary
 from racgoat.ui.widgets.files_pane import FilesPane
 from racgoat.ui.widgets.diff_pane import DiffPane
+
+if TYPE_CHECKING:
+    from racgoat.services.comment_store import CommentStore
 
 
 class TwoPaneLayout(Horizontal):
@@ -20,6 +25,7 @@ class TwoPaneLayout(Horizontal):
 
     Attributes:
         diff_summary: The parsed diff data to display
+        comment_store: Optional comment store for Milestone 3
     """
 
     BINDINGS = [
@@ -37,6 +43,7 @@ class TwoPaneLayout(Horizontal):
         self,
         diff_summary: DiffSummary,
         *,
+        comment_store: "CommentStore | None" = None,
         name: str | None = None,
         id: str | None = None,
     ) -> None:
@@ -44,11 +51,13 @@ class TwoPaneLayout(Horizontal):
 
         Args:
             diff_summary: Parsed diff data
+            comment_store: Optional comment store for Milestone 3
             name: Widget name (optional)
             id: Widget ID (optional, default: "two-pane-layout")
         """
         super().__init__(name=name, id=id or "two-pane-layout")
         self.diff_summary = diff_summary
+        self.comment_store = comment_store
         self._files_pane: FilesPane | None = None
         self._diff_pane: DiffPane | None = None
 
@@ -58,7 +67,7 @@ class TwoPaneLayout(Horizontal):
         Creates Files Pane on left, Diff Pane on right.
         """
         self._files_pane = FilesPane(self.diff_summary, id="files-pane")
-        self._diff_pane = DiffPane(id="diff-pane")
+        self._diff_pane = DiffPane(comment_store=self.comment_store, id="diff-pane")
 
         yield self._files_pane
         yield self._diff_pane
@@ -91,8 +100,11 @@ class TwoPaneLayout(Horizontal):
             return
 
         # Check which pane currently has focus
-        # Note: FilesPane delegates focus to its ListView
-        if self._files_pane.has_focus:
+        # Note: FilesPane delegates focus to its ListView, so we check focus-within
+        focused = self.app.focused
+
+        # Check if focus is within files pane (ListView child)
+        if focused and self._files_pane in focused.ancestors:
             # Files pane has focus -> switch to Diff pane
             self._diff_pane.focus()
         elif self._diff_pane.has_focus:
