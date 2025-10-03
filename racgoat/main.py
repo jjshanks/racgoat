@@ -9,6 +9,8 @@ from textual.widgets import Header, Footer, Static, Button, Label
 from textual.binding import Binding
 
 from racgoat.parser.diff_parser import parse_diff
+from racgoat.parser.models import DiffSummary
+from racgoat.ui.widgets import TwoPaneLayout
 
 
 class RacGoatApp(App):
@@ -20,7 +22,19 @@ class RacGoatApp(App):
 
     CSS = """
     Screen {
-        align: center middle;
+        layout: vertical;
+    }
+
+    #two-pane-layout {
+        height: 1fr;
+    }
+
+    #empty-message {
+        width: 100%;
+        height: 100%;
+        content-align: center middle;
+        text-style: bold;
+        color: $accent;
     }
 
     #main-container {
@@ -28,6 +42,7 @@ class RacGoatApp(App):
         height: 20;
         border: heavy $primary;
         padding: 2 4;
+        align: center middle;
     }
 
     #title {
@@ -65,59 +80,76 @@ class RacGoatApp(App):
     # Hidden easter egg flag - shhh, it's a secret! 🦝
     raccoon_mode_active = False
 
-    def __init__(self, diff_file: str | None = None, output_file: str = "review.md"):
-        """Initialize the RacGoat app with optional diff file.
+    def __init__(
+        self,
+        diff_summary: DiffSummary | None = None,
+        diff_file: str | None = None,
+        output_file: str = "review.md",
+    ):
+        """Initialize the RacGoat app.
 
         Args:
-            diff_file: Path to file containing git diff, or None for demo mode
+            diff_summary: Parsed diff data (preferred for Milestone 2+)
+            diff_file: Path to file containing git diff (legacy Milestone 1)
             output_file: Path for output review file (default: review.md)
         """
         super().__init__()
         self.diff_file = diff_file
         self.output_file = output_file
         self.diff_input = None
-        self.diff_summary = None
 
-        if diff_file:
-            # Load diff from file
+        # Use provided diff_summary if available
+        if diff_summary is not None:
+            self.diff_summary = diff_summary
+        elif diff_file:
+            # Legacy: Load diff from file (Milestone 1 mode)
             try:
-                with open(diff_file, 'r') as f:
+                with open(diff_file, "r") as f:
                     self.diff_input = f.read()
                 # Parse the diff input
-                self.diff_summary = parse_diff(self.diff_input.splitlines(keepends=True))
+                self.diff_summary = parse_diff(
+                    self.diff_input.splitlines(keepends=True)
+                )
             except (OSError, IOError) as e:
                 # File read error - will show error in UI
                 self.diff_input = ""
                 self.diff_summary = None
+        else:
+            # No diff provided - empty state
+            self.diff_summary = None
 
     def compose(self) -> ComposeResult:
-        """Compose the UI layout."""
+        """Compose the UI layout.
+
+        For Milestone 2: Show TwoPaneLayout or empty message.
+        """
         yield Header()
-        with Container(id="main-container"):
-            yield Static("🦝 RacGoat Adventures 🐐", id="title")
-            yield Label("", id="message")
-            yield Static("", id="diff-display")
-            yield Static("", id="easter-egg")  # Hidden easter egg area
+
+        # Check if we have a valid diff
+        if self.diff_summary and not self.diff_summary.is_empty:
+            # Milestone 2: Show two-pane layout
+            yield TwoPaneLayout(self.diff_summary, id="two-pane-layout")
+        else:
+            # Empty diff: Show friendly message
+            yield Static(
+                "No changes to review 🦝🐐\n\n"
+                "The raccoon found no treasures today!\n"
+                "The goat climbed an empty cliff!",
+                id="empty-message",
+            )
+
         yield Footer()
 
     def on_mount(self) -> None:
         """Set the app title when mounted."""
-        self.title = "RacGoat - Trash Panda meets Mountain Climber"
-        self.sub_title = "Press 'q' to quit | Ctrl+T for raccoon mode 🦝"
-
-        # Update the display based on whether we have diff data
+        self.title = "RacGoat - TUI Diff Viewer"
         if self.diff_summary and not self.diff_summary.is_empty:
-            message_widget = self.query_one("#message", Label)
-            message_widget.update(f"Found {len(self.diff_summary.files)} file(s) in diff:")
-
-            diff_widget = self.query_one("#diff-display", Static)
-            diff_widget.update(self.diff_summary.format_output())
+            self.sub_title = (
+                f"Viewing {len(self.diff_summary.files)} file(s) | "
+                "Tab: Switch pane | q: Quit"
+            )
         else:
-            message_widget = self.query_one("#message", Label)
-            if self.diff_input is not None:
-                message_widget.update("No changes found in diff (all filtered or empty)")
-            else:
-                message_widget.update("Don't be a 'scapegoat' – let's code!")
+            self.sub_title = "No changes to review | Press q to quit"
 
     def action_toggle_raccoon_mode(self) -> None:
         """
@@ -139,9 +171,19 @@ class RacGoatApp(App):
                        severity="information", timeout=5)
 
 
+def run_tui(diff_summary: DiffSummary) -> None:
+    """Launch TUI with diff data (Milestone 2+).
+
+    Args:
+        diff_summary: Parsed diff to display
+    """
+    app = RacGoatApp(diff_summary=diff_summary)
+    app.run(mouse=False)
+
+
 def main(diff_file: str | None = None, output_file: str = "review.md"):
     """
-    Entry point for the RacGoat application.
+    Entry point for the RacGoat application (legacy Milestone 1).
 
     Args:
         diff_file: Optional path to file containing git diff

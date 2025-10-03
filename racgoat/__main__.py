@@ -14,7 +14,8 @@ import tempfile
 import selectors
 
 from racgoat.cli.args import parse_arguments
-from racgoat.main import main
+from racgoat.main import main, run_tui
+from racgoat.parser.diff_parser import parse_diff
 
 
 def run() -> None:
@@ -36,11 +37,19 @@ def run() -> None:
 
     # Check if we're the child process (have --diff-file from parent)
     if hasattr(args, 'diff_file') and args.diff_file:
-        # Child process - launch TUI with diff file
-        main(diff_file=args.diff_file, output_file=args.output)
+        # Child process - parse diff file and launch TUI (Milestone 2)
+        try:
+            with open(args.diff_file, "r") as f:
+                diff_input = f.read()
+            diff_summary = parse_diff(diff_input.splitlines(keepends=True))
+            run_tui(diff_summary)
+        except (OSError, IOError):
+            # Fallback to legacy mode on file read error
+            main(diff_file=args.diff_file, output_file=args.output)
     elif stdin_tty:
-        # Interactive mode - launch TUI directly
-        main(diff_file=None, output_file=args.output)
+        # Interactive mode - no diff, show empty state
+        from racgoat.parser.models import DiffSummary
+        run_tui(DiffSummary(files=[]))
     else:
         # Piped stdin mode - check if /dev/tty is available
         try:
@@ -52,29 +61,11 @@ def run() -> None:
             has_tty = False
 
         if not has_tty:
-            # No /dev/tty available - write stdin to temp file and launch TUI non-interactively
+            # No /dev/tty available - parse stdin and launch TUI (Milestone 2)
             # This happens in environments like CI/CD or non-interactive shells
-            with tempfile.NamedTemporaryFile(
-                mode="w+",
-                delete=False,
-                prefix="racgoat_",
-                suffix=".diff"
-            ) as temp_file:
-                temp_path = temp_file.name
-                # Read all stdin
-                stdin_data = sys.stdin.read()
-                temp_file.write(stdin_data)
-                temp_file.flush()
-
-            try:
-                # Launch TUI with the temp file
-                main(diff_file=temp_path, output_file=args.output)
-            finally:
-                # Clean up temp file
-                try:
-                    os.unlink(temp_path)
-                except OSError:
-                    pass
+            stdin_data = sys.stdin.read()
+            diff_summary = parse_diff(stdin_data.splitlines(keepends=True))
+            run_tui(diff_summary)
         else:
             # /dev/tty available - use toolong pattern for proper interactive TUI
             def request_exit(*args_signal) -> None:

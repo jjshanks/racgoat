@@ -3,7 +3,7 @@
 import re
 from typing import Optional
 
-from racgoat.parser.models import DiffFile, DiffSummary
+from racgoat.parser.models import DiffFile, DiffHunk, DiffSummary
 from racgoat.parser.file_filter import FileFilter
 
 
@@ -81,25 +81,54 @@ def parse_diff(lines: list[str]) -> DiffSummary:
     current_added = 0
     current_removed = 0
     current_is_binary = False
+    current_hunks: list[DiffHunk] = []
+    current_hunk_lines: list[tuple[str, str]] = []
+    current_hunk_old_start: Optional[int] = None
+    current_hunk_new_start: Optional[int] = None
     line_number = 0
     has_diff_header = False
     in_hunk = False
 
+    def save_current_hunk():
+        """Save the current hunk if it has content."""
+        nonlocal current_hunk_lines, current_hunk_old_start, current_hunk_new_start
+        if (
+            current_hunk_lines
+            and current_hunk_old_start is not None
+            and current_hunk_new_start is not None
+        ):
+            hunk = DiffHunk(
+                old_start=current_hunk_old_start,
+                new_start=current_hunk_new_start,
+                lines=current_hunk_lines.copy(),
+            )
+            current_hunks.append(hunk)
+            current_hunk_lines = []
+            current_hunk_old_start = None
+            current_hunk_new_start = None
+
     def save_current_file():
         """Save the current file to summary if not filtered."""
+        nonlocal current_hunks
         if current_file_path is not None:
+            # Save any pending hunk
+            save_current_hunk()
+
             # Check if file should be filtered
             if current_is_binary or file_filter.is_filtered(current_file_path):
                 # Skip this file
+                current_hunks = []
                 return
 
             diff_file = DiffFile(
                 file_path=current_file_path,
                 added_lines=current_added,
                 removed_lines=current_removed,
-                is_binary=current_is_binary
+                is_binary=current_is_binary,
+                hunks=current_hunks.copy()
             )
             summary.add_file(diff_file)
+            current_hunks = []
 
     try:
         for line in lines:
@@ -115,7 +144,12 @@ def parse_diff(lines: list[str]) -> DiffSummary:
                 current_added = 0
                 current_removed = 0
                 current_is_binary = False
+                current_hunks = []
+                current_hunk_lines = []
+                current_hunk_old_start = None
+                current_hunk_new_start = None
                 has_diff_header = True
+                in_hunk = False
                 continue
 
             # Check for binary file marker
@@ -138,13 +172,24 @@ def parse_diff(lines: list[str]) -> DiffSummary:
                 current_added = 0
                 current_removed = 0
                 current_is_binary = False
+                current_hunks = []
+                current_hunk_lines = []
+                current_hunk_old_start = None
+                current_hunk_new_start = None
+                in_hunk = False
                 continue
 
             # Check for hunk header
             if line.startswith("@@"):
                 try:
-                    # Validate hunk header format
-                    parse_hunk_header(line)
+                    # Save previous hunk if exists
+                    save_current_hunk()
+
+                    # Parse and store hunk header info
+                    old_start, old_count, new_start, new_count = parse_hunk_header(line)
+                    current_hunk_old_start = old_start
+                    current_hunk_new_start = new_start
+                    current_hunk_lines = []
                     in_hunk = True
                 except ValueError as e:
                     # Only raise error if we're in a real diff (not just random @@ in output)
@@ -167,11 +212,23 @@ def parse_diff(lines: list[str]) -> DiffSummary:
                 # Don't reset current_file_path here
                 continue
 
-            # Count added and removed lines
+            # Count added and removed lines, and store in hunk if we're in one
             if line.startswith("+") and not line.startswith("+++"):
                 current_added += 1
+                if in_hunk:
+                    # Store line content without the prefix
+                    content = line[1:].rstrip('\n\r')
+                    current_hunk_lines.append(('+', content))
             elif line.startswith("-") and not line.startswith("---"):
                 current_removed += 1
+                if in_hunk:
+                    # Store line content without the prefix
+                    content = line[1:].rstrip('\n\r')
+                    current_hunk_lines.append(('-', content))
+            elif in_hunk and line.startswith(" "):
+                # Context line (unchanged)
+                content = line[1:].rstrip('\n\r')
+                current_hunk_lines.append((' ', content))
     except ValueError:
         # Re-raise ValueError as-is (already formatted)
         raise
