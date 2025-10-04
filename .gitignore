@@ -38,3 +38,5 @@ htmlcov/
 *.log
 
 *local*
+*repomix*
+review.md

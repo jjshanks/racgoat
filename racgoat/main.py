@@ -89,6 +89,7 @@ class RacGoatApp(App):
         Binding("c", "add_file_comment", "File Comment", show=False),
         Binding("s", "enter_select_mode", "Select Range", show=False),
         Binding("escape", "cancel_select_mode", "Cancel", show=False),
+        Binding("enter", "confirm_select_mode", "Confirm", show=False),
         Binding("ctrl+t", "toggle_raccoon_mode", "🦝 Raccoon", show=True),
     ]
 
@@ -178,12 +179,182 @@ class RacGoatApp(App):
         else:
             self.sub_title = "No changes to review | Press q to quit"
 
+    def watch_mode(self, new_mode: ApplicationMode) -> None:
+        """Propagate mode changes to child widgets."""
+        if self.diff_summary and not self.diff_summary.is_empty:
+            try:
+                two_pane = self.query_one(TwoPaneLayout)
+                if two_pane._diff_pane:
+                    two_pane._diff_pane.app_mode = new_mode
+                status_bar = self.query_one("#status-bar")
+                if status_bar:
+                    status_bar.app_mode = new_mode
+            except:
+                # Widgets not mounted yet
+                pass
+
     def action_cycle_focus(self) -> None:
         """Cycle focus between panes (Tab key)."""
         # This is handled by TwoPaneLayout in Milestone 2
         pass
 
-    async def action_add_line_comment(self) -> None:
+    def action_quit(self) -> None:
+        """Quit the application and save review if comments exist.
+
+        The raccoon stashes its treasures before departing!
+        """
+        # Run the actual quit logic in a worker so we can use push_screen_wait
+        self.run_worker(self._do_quit(), exclusive=True)
+
+    async def _do_quit(self) -> None:
+        """Worker method to handle quit logic with modal support."""
+        from pathlib import Path
+        from racgoat.services.git_metadata import get_git_metadata
+        from racgoat.services.markdown_writer import serialize_review_session, write_markdown_output
+        from racgoat.models.comments import (
+            ReviewSession,
+            FileReview,
+            LineComment as SerLineComment,
+            RangeComment as SerRangeComment,
+            FileComment as SerFileComment,
+        )
+        from racgoat.ui.widgets.error_dialog import ErrorRecoveryScreen
+
+        # Check if we have any comments
+        comment_count = self.comment_store.count()
+        if comment_count == 0:
+            # No comments, just exit
+            self.notify("No comments to save", severity="information")
+            self.exit()
+            return
+
+        # Diagnostic: Show comment count
+        self.notify(f"Saving {comment_count} comment(s)...", severity="information")
+
+        # Convert comment store to ReviewSession
+        review_session = self._create_review_session()
+
+        # Get git metadata
+        branch_name, commit_sha = get_git_metadata()
+        review_session.branch_name = branch_name
+        review_session.commit_sha = commit_sha
+
+        # Serialize to Markdown
+        content = serialize_review_session(review_session)
+
+        # Try to write to output file
+        output_path = Path(self.output_file)
+        max_retries = 3
+        retry_count = 0
+
+        while retry_count < max_retries:
+            try:
+                write_markdown_output(content, output_path)
+                self.notify(f"Review saved to {output_path}", severity="information")
+                self.exit()
+                return
+
+            except FileExistsError:
+                # File already exists - show error recovery dialog
+                error_msg = f"Output file already exists: {output_path}"
+                result = await self.push_screen_wait(
+                    ErrorRecoveryScreen(
+                        error_message=error_msg,
+                        show_tmp_fallback=True,
+                        original_path=str(output_path)
+                    )
+                )
+
+                if result is None:
+                    # User cancelled - exit without saving
+                    self.notify("Review not saved (cancelled by user)", severity="warning")
+                    self.exit()
+                    return
+                else:
+                    # User provided new path - retry with new path
+                    output_path = Path(result)
+                    retry_count += 1
+
+            except OSError as e:
+                # Write error (permissions, invalid path, etc.)
+                error_msg = f"Cannot write to {output_path}: {e}"
+                result = await self.push_screen_wait(
+                    ErrorRecoveryScreen(
+                        error_message=error_msg,
+                        show_tmp_fallback=True,
+                        original_path=str(output_path)
+                    )
+                )
+
+                if result is None:
+                    # User cancelled - exit without saving
+                    self.notify("Review not saved (cancelled by user)", severity="warning")
+                    self.exit()
+                    return
+                else:
+                    # User provided new path - retry with new path
+                    output_path = Path(result)
+                    retry_count += 1
+
+        # Max retries exceeded
+        self.notify("Failed to save review after multiple attempts", severity="error")
+        self.exit()
+
+    def _create_review_session(self) -> "ReviewSession":
+        """Convert comment store to ReviewSession for serialization.
+
+        Returns:
+            ReviewSession with all comments organized by file
+        """
+        from racgoat.models.comments import (
+            ReviewSession,
+            FileReview,
+            LineComment as SerLineComment,
+            RangeComment as SerRangeComment,
+            FileComment as SerFileComment,
+        )
+
+        # Get all unique comments from store using the unique tracker
+        file_reviews = {}
+
+        # Iterate through unique comments to avoid duplicates
+        for comment_id, comment in self.comment_store._unique_comments.items():
+            file_path = comment.target.file_path
+
+            # Create FileReview if not exists
+            if file_path not in file_reviews:
+                file_reviews[file_path] = FileReview(
+                    file_path=file_path,
+                    comments=[]
+                )
+
+            # Convert to serializable comment based on type
+            if comment.target.is_line_comment:
+                ser_comment = SerLineComment(
+                    text=comment.text,
+                    line_number=comment.target.line_number
+                )
+            elif comment.target.is_range_comment:
+                start, end = comment.target.line_range
+                ser_comment = SerRangeComment(
+                    text=comment.text,
+                    start_line=start,
+                    end_line=end
+                )
+            elif comment.target.is_file_comment:
+                ser_comment = SerFileComment(text=comment.text)
+            else:
+                continue  # Skip unknown types
+
+            file_reviews[file_path].comments.append(ser_comment)
+
+        return ReviewSession(
+            file_reviews=file_reviews,
+            branch_name="Unknown Branch",
+            commit_sha="Unknown SHA"
+        )
+
+    def action_add_line_comment(self) -> None:
         """Add a comment to the current line (a key).
 
         The raccoon stashes a thought about this line!
@@ -209,36 +380,38 @@ class RacGoatApp(App):
 
         prompt = f"Comment on line {line_number}:"
 
-        # Show input modal
-        from racgoat.ui.widgets.comment_input import CommentInput
-        result = await self.push_screen(CommentInput(prompt=prompt, prefill=prefill))
-
-        if result:  # User provided text
-            target = CommentTarget(
-                file_path=file_path,
-                line_number=line_number,
-                line_range=None
-            )
-
-            if existing_comments:
-                # Update existing comment
-                self.comment_store.update(target, result)
-                self.notify(f"Comment updated on line {line_number}", severity="information")
-            else:
-                # Create new comment
-                comment = Comment(
-                    text=result,
-                    target=target,
-                    timestamp=datetime.now(),
-                    comment_type=CommentType.LINE
+        # Define callback to handle modal result
+        def handle_comment_result(result: str | None) -> None:
+            if result:  # User provided text
+                target = CommentTarget(
+                    file_path=file_path,
+                    line_number=line_number,
+                    line_range=None
                 )
-                self.comment_store.add(comment)
-                self.notify(f"Comment added to line {line_number}", severity="information")
 
-            # Refresh display to show marker
-            diff_pane.display_file(diff_pane.current_file)
+                if existing_comments:
+                    # Update existing comment
+                    self.comment_store.update(target, result)
+                    self.notify(f"Comment updated on line {line_number}", severity="information")
+                else:
+                    # Create new comment
+                    comment = Comment(
+                        text=result,
+                        target=target,
+                        timestamp=datetime.now(),
+                        comment_type=CommentType.LINE
+                    )
+                    self.comment_store.add(comment)
+                    self.notify(f"Comment added to line {line_number}", severity="information")
 
-    async def action_add_file_comment(self) -> None:
+                # Refresh display to show marker
+                diff_pane.display_file(diff_pane.current_file, refresh_only=True)
+
+        # Show input modal with callback
+        from racgoat.ui.widgets.comment_input import CommentInput
+        self.push_screen(CommentInput(prompt=prompt, prefill=prefill), handle_comment_result)
+
+    def action_add_file_comment(self) -> None:
         """Add a comment to the current file (c key).
 
         The goat bleats wisdom about the entire file!
@@ -263,31 +436,33 @@ class RacGoatApp(App):
 
         prompt = f"Comment on file {file_path}:"
 
-        # Show input modal
-        from racgoat.ui.widgets.comment_input import CommentInput
-        result = await self.push_screen(CommentInput(prompt=prompt, prefill=prefill))
-
-        if result:  # User provided text
-            target = CommentTarget(
-                file_path=file_path,
-                line_number=None,
-                line_range=None
-            )
-
-            if existing_comments:
-                # Update existing comment
-                self.comment_store.update(target, result)
-                self.notify(f"File comment updated: {file_path}", severity="information")
-            else:
-                # Create new comment
-                comment = Comment(
-                    text=result,
-                    target=target,
-                    timestamp=datetime.now(),
-                    comment_type=CommentType.FILE
+        # Define callback to handle modal result
+        def handle_comment_result(result: str | None) -> None:
+            if result:  # User provided text
+                target = CommentTarget(
+                    file_path=file_path,
+                    line_number=None,
+                    line_range=None
                 )
-                self.comment_store.add(comment)
-                self.notify(f"File comment added: {file_path}", severity="information")
+
+                if existing_comments:
+                    # Update existing comment
+                    self.comment_store.update(target, result)
+                    self.notify(f"File comment updated: {file_path}", severity="information")
+                else:
+                    # Create new comment
+                    comment = Comment(
+                        text=result,
+                        target=target,
+                        timestamp=datetime.now(),
+                        comment_type=CommentType.FILE
+                    )
+                    self.comment_store.add(comment)
+                    self.notify(f"File comment added: {file_path}", severity="information")
+
+        # Show input modal with callback
+        from racgoat.ui.widgets.comment_input import CommentInput
+        self.push_screen(CommentInput(prompt=prompt, prefill=prefill), handle_comment_result)
 
     def action_enter_select_mode(self) -> None:
         """Enter SELECT mode for range comments (s key).
@@ -309,6 +484,10 @@ class RacGoatApp(App):
         self.mode = ApplicationMode.SELECT
         diff_pane.select_start_line = diff_pane.current_line
         diff_pane.select_end_line = diff_pane.current_line
+
+        # Refresh display to show selection highlighting
+        diff_pane.display_file(diff_pane.current_file, refresh_only=True)
+
         self.notify("SELECT mode: Use ↑/↓ to expand, Enter to confirm, Esc to cancel", severity="information")
 
     def action_cancel_select_mode(self) -> None:
@@ -325,8 +504,67 @@ class RacGoatApp(App):
             if diff_pane:
                 diff_pane.select_start_line = None
                 diff_pane.select_end_line = None
+                # Refresh display to remove visual highlight
+                if diff_pane.current_file:
+                    diff_pane.display_file(diff_pane.current_file, refresh_only=True)
 
             self.notify("SELECT mode cancelled", severity="information")
+
+    def action_confirm_select_mode(self) -> None:
+        """Confirm SELECT mode and prompt for range comment (Enter key).
+
+        The raccoon finalizes the selection and stashes wisdom!
+        """
+        if self.mode != ApplicationMode.SELECT:
+            return
+
+        # Get selection from DiffPane
+        two_pane = self.query_one(TwoPaneLayout, expect_type=TwoPaneLayout)
+        diff_pane = two_pane._diff_pane
+
+        if not diff_pane or not diff_pane.current_file:
+            self.notify("No file selected for range comment", severity="warning")
+            return
+
+        if diff_pane.select_start_line is None or diff_pane.select_end_line is None:
+            self.notify("No range selected", severity="warning")
+            return
+
+        file_path = diff_pane.current_file.file_path
+        start_line = min(diff_pane.select_start_line, diff_pane.select_end_line)
+        end_line = max(diff_pane.select_start_line, diff_pane.select_end_line)
+
+        # Exit SELECT mode first
+        self.mode = ApplicationMode.NORMAL
+        diff_pane.select_start_line = None
+        diff_pane.select_end_line = None
+
+        # Define callback to handle modal result
+        def handle_comment_result(result: str | None) -> None:
+            if result:  # User provided text
+                target = CommentTarget(
+                    file_path=file_path,
+                    line_number=None,
+                    line_range=(start_line, end_line)
+                )
+
+                # Create range comment
+                comment = Comment(
+                    text=result,
+                    target=target,
+                    timestamp=datetime.now(),
+                    comment_type=CommentType.RANGE
+                )
+                self.comment_store.add(comment)
+                self.notify(f"Range comment added (lines {start_line}-{end_line})", severity="information")
+
+                # Refresh display to show markers
+                diff_pane.display_file(diff_pane.current_file, refresh_only=True)
+
+        # Prompt for comment text
+        prompt = f"Comment on lines {start_line}-{end_line}:"
+        from racgoat.ui.widgets.comment_input import CommentInput
+        self.push_screen(CommentInput(prompt=prompt, prefill=""), handle_comment_result)
 
     def action_toggle_raccoon_mode(self) -> None:
         """
@@ -342,13 +580,14 @@ class RacGoatApp(App):
                        severity="information", timeout=5)
 
 
-def run_tui(diff_summary: DiffSummary) -> None:
+def run_tui(diff_summary: DiffSummary, output_file: str = "review.md") -> None:
     """Launch TUI with diff data (Milestone 2+).
 
     Args:
         diff_summary: Parsed diff to display
+        output_file: Path for output review file (default: review.md)
     """
-    app = RacGoatApp(diff_summary=diff_summary)
+    app = RacGoatApp(diff_summary=diff_summary, output_file=output_file)
     app.run(mouse=False)
 
 

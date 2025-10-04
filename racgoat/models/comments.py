@@ -98,3 +98,159 @@ class Comment:
 
         # Note: Text validation happens in CommentStore.add() to allow
         # flexible comment creation for testing/modification scenarios
+
+
+# ============================================================================
+# Milestone 4: Serialization Models
+# ============================================================================
+# The models below are for serializing comments to Markdown format.
+# They are simpler than the UI/storage models above (no UUIDs, timestamps).
+# ============================================================================
+
+
+@dataclass(frozen=True)
+class SerializableComment:
+    """Base class for serializable comments (Milestone 4).
+
+    These models are used for Markdown serialization and differ from the
+    UI/storage Comment models above. They're simpler (no UUIDs, timestamps)
+    and optimized for output generation.
+
+    Args:
+        text: Comment content (Markdown preserved, 1-10,000 chars)
+        comment_type: Discriminator for comment type ("line", "range", "file")
+
+    Raises:
+        ValueError: If text is empty or exceeds 10,000 characters
+    """
+    text: str
+    comment_type: str  # Literal["line", "range", "file"] but using str for compatibility
+
+    def __post_init__(self):
+        """Validate comment text constraints."""
+        if not self.text or len(self.text) < 1:
+            raise ValueError("Comment text must not be empty (min 1 character)")
+        if len(self.text) > 10_000:
+            raise ValueError("Comment text exceeds maximum length (10,000 characters)")
+
+
+@dataclass(frozen=True)
+class LineComment(SerializableComment):
+    """Serializable comment attached to a specific line.
+
+    Args:
+        text: Comment content
+        line_number: Post-change line number (must be >= 1)
+
+    Raises:
+        ValueError: If line_number is less than 1
+    """
+    line_number: int = 0
+    comment_type: str = field(default="line", init=False)
+
+    def __post_init__(self):
+        """Validate line number and comment text."""
+        # Call parent validation
+        object.__setattr__(self, 'comment_type', 'line')
+        super().__post_init__()
+        if self.line_number < 1:
+            raise ValueError("Line number must be positive (>= 1)")
+
+
+@dataclass(frozen=True)
+class RangeComment(SerializableComment):
+    """Serializable comment spanning multiple consecutive lines.
+
+    Args:
+        text: Comment content
+        start_line: First line of range (inclusive, >= 1)
+        end_line: Last line of range (inclusive, >= start_line)
+
+    Raises:
+        ValueError: If start_line < 1 or end_line < start_line
+    """
+    start_line: int = 0
+    end_line: int = 0
+    comment_type: str = field(default="range", init=False)
+
+    def __post_init__(self):
+        """Validate range bounds and comment text."""
+        object.__setattr__(self, 'comment_type', 'range')
+        super().__post_init__()
+        if self.start_line < 1:
+            raise ValueError("Start line must be positive (>= 1)")
+        if self.end_line < self.start_line:
+            raise ValueError(f"End line ({self.end_line}) must be >= start line ({self.start_line})")
+
+
+@dataclass(frozen=True)
+class FileComment(SerializableComment):
+    """Serializable file-level comment.
+
+    Args:
+        text: Comment content
+    """
+    comment_type: str = field(default="file", init=False)
+
+    def __post_init__(self):
+        """Set comment type and validate text."""
+        object.__setattr__(self, 'comment_type', 'file')
+        super().__post_init__()
+
+
+@dataclass
+class FileReview:
+    """Container for all comments on a single file.
+
+    Args:
+        file_path: Relative path to file (from repository root, forward slashes)
+        comments: List of comments for this file (line, range, file-level)
+
+    Raises:
+        ValueError: If file_path is empty or exceeds 100 comments
+    """
+    file_path: str
+    comments: list[SerializableComment] = field(default_factory=list)
+
+    def __post_init__(self):
+        """Validate file path and comment count."""
+        if not self.file_path:
+            raise ValueError("File path must not be empty")
+        if len(self.comments) > 100:
+            raise ValueError(f"File has {len(self.comments)} comments, maximum is 100")
+
+
+@dataclass
+class ReviewSession:
+    """Top-level container for an entire review session.
+
+    Args:
+        file_reviews: Map of file path → FileReview
+        branch_name: Git branch being reviewed (or "Unknown Branch")
+        commit_sha: Git commit SHA (or "Unknown SHA")
+
+    Derived Properties:
+        total_comment_count: Sum of comments across all files
+        has_comments: Whether any comments exist (determines file output)
+
+    Raises:
+        ValueError: If total comments across all files exceed 100
+    """
+    file_reviews: dict[str, FileReview] = field(default_factory=dict)
+    branch_name: str = "Unknown Branch"
+    commit_sha: str = "Unknown SHA"
+
+    @property
+    def total_comment_count(self) -> int:
+        """Total number of comments across all files."""
+        return sum(len(review.comments) for review in self.file_reviews.values())
+
+    @property
+    def has_comments(self) -> bool:
+        """Whether any comments exist in the session."""
+        return self.total_comment_count > 0
+
+    def __post_init__(self):
+        """Validate total comment count."""
+        if self.total_comment_count > 100:
+            raise ValueError(f"Session has {self.total_comment_count} comments, maximum is 100")

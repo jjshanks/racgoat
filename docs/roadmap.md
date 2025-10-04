@@ -66,5 +66,6 @@
     * Benchmark the application against large, real-world diffs.
     * Add robust error handling for malformed diff inputs.
     * Refine all UI elements and help text for clarity and consistency.
+    * **Resolve Milestone 1 test regression**: Remove or rewrite obsolete binary filtering tests (`tests/contract/test_binary_filtering.py`) that expect CLI behavior (immediate exit) but fail under TUI architecture (waits for user interaction). Options: (1) Remove tests as they test deleted functionality, (2) Rewrite as TUI tests verifying binary files are excluded from file list, or (3) Add headless CLI mode for testing.
 
 **Deliverable**: A production-ready, performant, and stable **v1** of the AI Code Review TUI.

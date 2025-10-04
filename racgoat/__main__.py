@@ -42,14 +42,14 @@ def run() -> None:
             with open(args.diff_file, "r") as f:
                 diff_input = f.read()
             diff_summary = parse_diff(diff_input.splitlines(keepends=True))
-            run_tui(diff_summary)
+            run_tui(diff_summary, output_file=args.output)
         except (OSError, IOError):
             # Fallback to legacy mode on file read error
             main(diff_file=args.diff_file, output_file=args.output)
     elif stdin_tty:
         # Interactive mode - no diff, show empty state
         from racgoat.parser.models import DiffSummary
-        run_tui(DiffSummary(files=[]))
+        run_tui(DiffSummary(files=[]), output_file=args.output)
     else:
         # Piped stdin mode - check if /dev/tty is available
         try:
@@ -65,7 +65,7 @@ def run() -> None:
             # This happens in environments like CI/CD or non-interactive shells
             stdin_data = sys.stdin.read()
             diff_summary = parse_diff(stdin_data.splitlines(keepends=True))
-            run_tui(diff_summary)
+            run_tui(diff_summary, output_file=args.output)
         else:
             # /dev/tty available - use toolong pattern for proper interactive TUI
             def request_exit(*args_signal) -> None:
