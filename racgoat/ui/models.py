@@ -7,6 +7,11 @@ from dataclasses import dataclass
 from enum import Enum
 
 from racgoat.parser.models import DiffFile
+from racgoat.models.comments import Comment
+
+# Type alias for clarity in edit operations (Milestone 5)
+# EditableComment refers to any existing Comment that can be modified/deleted
+EditableComment = Comment
 
 
 class PaneFocusState(Enum):
@@ -181,3 +186,130 @@ class CommentMarker:
                 line_number=line_number,
                 comment_count=comment_count
             )
+
+
+# Milestone 5: Search and Edit Models
+
+
+@dataclass
+class SearchQuery:
+    """User's search input and match configuration.
+
+    The raccoon sniffs through the trash, looking for specific treasures!
+
+    Attributes:
+        pattern: Literal search string entered by user
+        case_sensitive: Whether search is case-sensitive (always True per FR-020)
+        is_regex: Whether pattern is regex (always False per FR-019)
+
+    Validation:
+        - pattern must be non-empty when active
+        - case_sensitive must always be True (literal matching only)
+        - is_regex must always be False (no regex support)
+    """
+
+    pattern: str
+    case_sensitive: bool = True
+    is_regex: bool = False
+
+
+@dataclass
+class SearchMatch:
+    """A single occurrence of the search pattern within diff text.
+
+    Like finding a shiny bottle cap in the raccoon's treasure pile!
+
+    Attributes:
+        line_number: Post-change line number where match occurs (>= 1)
+        char_offset: Character position within the line (0-indexed)
+        matched_text: Actual text that matched (for highlighting)
+        match_length: Length of matched text in characters
+
+    Validation:
+        - line_number must be >= 1
+        - char_offset must be >= 0
+        - matched_text must equal the search pattern exactly (case-sensitive)
+        - match_length must equal len(matched_text)
+    """
+
+    line_number: int
+    char_offset: int
+    matched_text: str
+    match_length: int
+
+
+@dataclass
+class SearchState:
+    """Container for search query, matches, and current position per file.
+
+    The raccoon's mental map of all the shiny things it found in this trash can!
+
+    Attributes:
+        query: Active search query (None if no search active)
+        matches: All matches in current file (empty if no matches)
+        current_index: Index of currently focused match (-1 if no matches)
+        file_path: File this search state belongs to
+
+    Validation:
+        - current_index must be -1 when matches is empty
+        - current_index must be >= 0 and < len(matches) when matches is non-empty
+        - If query is None, then matches must be empty and current_index must be -1
+        - file_path must match a file in the current diff
+    """
+
+    query: SearchQuery | None = None
+    matches: list[SearchMatch] = None
+    current_index: int = -1
+    file_path: str = ""
+
+    def __post_init__(self):
+        """Initialize matches list if None."""
+        if self.matches is None:
+            self.matches = []
+
+
+@dataclass
+class EditContext:
+    """Context for determining which comment exists at cursor position.
+
+    The goat knows exactly which comment it's about to polish!
+
+    Attributes:
+        file_path: Current file being viewed
+        cursor_line: Current line number where cursor is positioned
+        existing_comment: Comment found at cursor position (None if no comment)
+
+    Validation:
+        - file_path must be non-empty
+        - cursor_line must be >= 1
+        - existing_comment must be None OR a valid Comment from CommentStore
+    """
+
+    file_path: str
+    cursor_line: int
+    existing_comment: EditableComment | None = None
+
+
+@dataclass
+class HelpEntry:
+    """A single keybinding in the help overlay.
+
+    One line in the raccoon's treasure map!
+
+    Attributes:
+        key: Keyboard key or combination (e.g., "e", "/", "?", "Esc", "n", "N")
+        action: Short action name (e.g., "Edit comment", "Search", "Help")
+        description: Detailed description of what the keybinding does
+        context: Functional category for grouping
+
+    Validation:
+        - key must be non-empty
+        - action must be non-empty
+        - description must be non-empty
+        - context must be one of: "Navigation", "Commenting", "Search", "General"
+    """
+
+    key: str
+    action: str
+    description: str
+    context: str

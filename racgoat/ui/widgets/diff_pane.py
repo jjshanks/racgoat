@@ -14,7 +14,7 @@ from textual.widgets import Static
 from textual.containers import VerticalScroll
 
 from racgoat.parser.models import DiffFile, DiffHunk
-from racgoat.ui.models import ApplicationMode
+from racgoat.ui.models import ApplicationMode, SearchState, SearchQuery, SearchMatch
 
 if TYPE_CHECKING:
     from racgoat.services.comment_store import CommentStore
@@ -81,6 +81,8 @@ class DiffPane(VerticalScroll):
         self._content_widget: Static | None = None
         # Per-file state tracking: {file_path: (scroll_y, current_line)}
         self._file_states: dict[str, tuple[float, int]] = {}
+        # SEARCH state (Milestone 5)
+        self.search_state: SearchState = SearchState()
 
     def action_scroll_up(self) -> None:
         """Override VerticalScroll's scroll_up to use our cursor movement."""
@@ -219,7 +221,10 @@ class DiffPane(VerticalScroll):
                     text.append(gutter, style=self._get_gutter_style(current_line))
                 text.append(f"  {current_line:4} ", style="dim")
                 line_style = "bold green on #333333" if is_selected else "green"
-                text.append(f"+{content}\n", style=line_style)
+                # Apply search highlighting if active
+                self._append_with_search_highlights(
+                    text, f"+{content}\n", current_line, line_style
+                )
                 current_line += 1
             elif change_type == "-":
                 # Removed line: red, no line number, no gutter marker
@@ -237,7 +242,10 @@ class DiffPane(VerticalScroll):
                     text.append(gutter, style=self._get_gutter_style(current_line))
                 text.append(f"  {current_line:4} ", style="dim")
                 line_style = "bold on #333333" if is_selected else "dim"
-                text.append(f" {content}\n", style=line_style)
+                # Apply search highlighting if active
+                self._append_with_search_highlights(
+                    text, f" {content}\n", current_line, line_style
+                )
                 current_line += 1
 
         return text
@@ -567,3 +575,263 @@ class DiffPane(VerticalScroll):
         # Refresh display and scroll to cursor
         self.display_file(self.current_file, refresh_only=True)
         self._scroll_to_cursor()
+
+    def _append_with_search_highlights(
+        self, text: Text, content: str, line_number: int, base_style: str
+    ) -> None:
+        """Append content to text with search match highlighting.
+
+        The raccoon makes the shiny parts glow!
+
+        Args:
+            text: Rich Text object to append to
+            content: Content to append (may include newline)
+            line_number: Line number of this content
+            base_style: Base style for non-highlighted parts
+        """
+        # If no search active, just append with base style
+        if not self.search_state.query or not self.search_state.matches:
+            text.append(content, style=base_style)
+            return
+
+        # Find matches for this line
+        line_matches = [
+            m for m in self.search_state.matches if m.line_number == line_number
+        ]
+
+        if not line_matches:
+            # No matches on this line, append normally
+            text.append(content, style=base_style)
+            return
+
+        # Apply highlighting for matches
+        pattern = self.search_state.query.pattern
+        current_match_line = None
+        if self.search_state.current_index >= 0 and self.search_state.current_index < len(self.search_state.matches):
+            current_match = self.search_state.matches[self.search_state.current_index]
+            if current_match.line_number == line_number:
+                current_match_line = current_match
+
+        # Split content and apply highlights
+        # Note: content includes the leading '+' or ' ' and trailing '\n'
+        prefix = content[0]  # '+' or ' '
+        line_content = content[1:-1] if content.endswith('\n') else content[1:]
+        newline = '\n' if content.endswith('\n') else ''
+
+        # Append prefix
+        text.append(prefix, style=base_style)
+
+        # Find all occurrences of pattern in line_content
+        last_pos = 0
+        for match in sorted(line_matches, key=lambda m: m.char_offset):
+            # Append text before match
+            if match.char_offset > last_pos:
+                text.append(line_content[last_pos:match.char_offset], style=base_style)
+
+            # Determine highlight style for this match
+            is_current_match = (current_match_line and match.char_offset == current_match_line.char_offset)
+            if is_current_match:
+                # Current match: bold yellow on black (high contrast)
+                highlight_style = "bold yellow on black"
+            else:
+                # Other matches: yellow on dark gray
+                highlight_style = "yellow on #1a1a1a"
+
+            # Append highlighted match
+            match_end = match.char_offset + match.match_length
+            text.append(line_content[match.char_offset:match_end], style=highlight_style)
+            last_pos = match_end
+
+        # Append remaining text after last match
+        if last_pos < len(line_content):
+            text.append(line_content[last_pos:], style=base_style)
+
+        # Append newline
+        if newline:
+            text.append(newline)
+
+    # Milestone 5: Search Functionality
+
+    def execute_search(self, pattern: str) -> None:
+        """Execute search and populate matches list.
+
+        The raccoon sniffs through the trash, finding all the shiny patterns!
+
+        Args:
+            pattern: Search pattern (case-sensitive literal string)
+        """
+        if not self.current_file or not pattern:
+            self.search_state = SearchState()
+            return
+
+        # Create search query
+        self.search_state.query = SearchQuery(pattern=pattern, case_sensitive=True, is_regex=False)
+        self.search_state.matches = []
+        self.search_state.current_index = -1
+        self.search_state.file_path = self.current_file.file_path
+
+        # Scan all hunks for matches
+        for hunk in self.current_file.hunks:
+            current_line = hunk.new_start
+
+            for change_type, content in hunk.lines:
+                # Only search in lines with line numbers (not removed lines)
+                if change_type in ('+', ' '):
+                    # Find all occurrences of pattern in this line (case-sensitive)
+                    char_offset = 0
+                    while True:
+                        pos = content.find(pattern, char_offset)
+                        if pos == -1:
+                            break
+
+                        # Create match
+                        match = SearchMatch(
+                            line_number=current_line,
+                            char_offset=pos,
+                            matched_text=pattern,
+                            match_length=len(pattern)
+                        )
+                        self.search_state.matches.append(match)
+                        char_offset = pos + 1  # Continue searching for overlapping matches
+
+                    current_line += 1
+
+        # Set current index to first match if any matches found
+        if self.search_state.matches:
+            self.search_state.current_index = 0
+            # Jump to first match
+            first_match = self.search_state.matches[0]
+            self.current_line = first_match.line_number
+            self._scroll_to_cursor()
+
+        # Refresh display to show highlights
+        self.display_file(self.current_file, refresh_only=True)
+
+    def scroll_to_next_match(self) -> None:
+        """Navigate to next search match with wrap-around.
+
+        The raccoon hops to the next shiny thing!
+        """
+        if not self.search_state.matches:
+            return
+
+        # Increment index with wrap-around
+        self.search_state.current_index = (self.search_state.current_index + 1) % len(self.search_state.matches)
+
+        # Jump to match
+        match = self.search_state.matches[self.search_state.current_index]
+        self.current_line = match.line_number
+        self._scroll_to_cursor()
+
+        # Refresh display to update current match highlighting
+        if self.current_file:
+            self.display_file(self.current_file, refresh_only=True)
+
+    def scroll_to_previous_match(self) -> None:
+        """Navigate to previous search match with wrap-around.
+
+        The raccoon hops back to the previous shiny thing!
+        """
+        if not self.search_state.matches:
+            return
+
+        # Decrement index with wrap-around
+        self.search_state.current_index = (self.search_state.current_index - 1) % len(self.search_state.matches)
+
+        # Jump to match
+        match = self.search_state.matches[self.search_state.current_index]
+        self.current_line = match.line_number
+        self._scroll_to_cursor()
+
+        # Refresh display to update current match highlighting
+        if self.current_file:
+            self.display_file(self.current_file, refresh_only=True)
+
+    def clear_search(self) -> None:
+        """Clear search state and remove all highlights.
+
+        The raccoon forgets what it was looking for!
+        """
+        self.search_state = SearchState()
+
+        # Refresh display to remove highlights
+        if self.current_file:
+            self.display_file(self.current_file, refresh_only=True)
+
+    # Milestone 5: Edit Functionality
+
+    def action_edit_comment(self) -> None:
+        """Edit or delete existing comment at cursor.
+
+        The goat polishes its treasured notes!
+        """
+        if not self.current_file or not self.current_line or not self.comment_store:
+            return
+
+        # Get comment at cursor
+        existing_comment = self.comment_store.get_comment_at_cursor(
+            self.current_file.file_path, self.current_line
+        )
+
+        if not existing_comment:
+            # Silent no-op if no comment at cursor (per FR-034)
+            return
+
+        # Import here to avoid circular dependency
+        from racgoat.ui.widgets.comment_input import CommentInput
+
+        # Show edit dialog with pre-filled text
+        if self.app:
+            self.app.push_screen(
+                CommentInput(prompt="Edit comment:", prefill=existing_comment.text),
+                callback=lambda result: self._handle_edit_result(result, existing_comment)
+            )
+
+    def _handle_edit_result(self, result: str | None, comment) -> None:
+        """Handle edit dialog result (update or delete).
+
+        Args:
+            result: New comment text (None if cancelled, "" if delete requested)
+            comment: The Comment object being edited
+        """
+        if result is None:
+            # User cancelled (Esc) - do nothing
+            return
+
+        if result == "" or not result.strip():
+            # Empty text = delete request, show confirmation
+            self._show_delete_confirmation(comment)
+        else:
+            # Update comment text
+            if self.comment_store:
+                self.comment_store.update(comment.id, result)
+                # Refresh display to update markers (no scroll/cursor changes)
+                if self.current_file:
+                    self.display_file(self.current_file, refresh_only=True)
+
+    def _show_delete_confirmation(self, comment) -> None:
+        """Show confirmation dialog for comment deletion.
+
+        Args:
+            comment: The Comment object to potentially delete
+        """
+        from racgoat.ui.widgets.dialogs import ConfirmDialog
+
+        if self.app:
+            self.app.push_screen(
+                ConfirmDialog("Delete this comment?"),
+                callback=lambda confirmed: self._delete_if_confirmed(confirmed, comment)
+            )
+
+    def _delete_if_confirmed(self, confirmed: bool, comment) -> None:
+        """Delete comment if user confirmed.
+
+        Args:
+            confirmed: True if user clicked Yes, False otherwise
+            comment: The Comment object to delete
+        """
+        if confirmed and self.comment_store:
+            self.comment_store.delete(comment.id)
+            # Refresh display to remove markers
+            if self.current_file:
+                self.display_file(self.current_file, refresh_only=True)

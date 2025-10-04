@@ -88,8 +88,15 @@ class RacGoatApp(App):
         Binding("a", "add_line_comment", "Add Comment", show=False),  # Shown contextually
         Binding("c", "add_file_comment", "File Comment", show=False),
         Binding("s", "enter_select_mode", "Select Range", show=False),
+        Binding("e", "edit_comment", "Edit", show=False),  # Milestone 5
         Binding("escape", "cancel_select_mode", "Cancel", show=False),
         Binding("enter", "confirm_select_mode", "Confirm", show=False),
+        # Milestone 5: Search functionality
+        Binding("slash", "initiate_search", "Search", show=False),
+        Binding("n", "next_search_match", "Next", show=False),
+        Binding("N", "previous_search_match", "Previous", show=False),
+        # Milestone 5: Help overlay
+        Binding("question_mark", "show_help", "Help", show=True),
         Binding("ctrl+t", "toggle_raccoon_mode", "🦝 Raccoon", show=True),
     ]
 
@@ -565,6 +572,77 @@ class RacGoatApp(App):
         prompt = f"Comment on lines {start_line}-{end_line}:"
         from racgoat.ui.widgets.comment_input import CommentInput
         self.push_screen(CommentInput(prompt=prompt, prefill=""), handle_comment_result)
+
+    # Milestone 5: New actions
+
+    def action_show_help(self) -> None:
+        """Show help overlay with all keybindings (? key).
+
+        The raccoon's complete treasure map!
+        """
+        from racgoat.ui.widgets.help_screen import HelpScreen
+        self.push_screen(HelpScreen())
+
+    def action_initiate_search(self) -> None:
+        """Initiate search mode (/ key).
+
+        The raccoon starts sniffing for patterns!
+        """
+        # Get DiffPane
+        two_pane = self.query_one(TwoPaneLayout, expect_type=TwoPaneLayout)
+        diff_pane = two_pane._diff_pane
+
+        if not diff_pane or not diff_pane.current_file:
+            self.notify("No file to search", severity="warning")
+            return
+
+        # Show input for search pattern
+        from racgoat.ui.widgets.comment_input import CommentInput
+
+        def handle_search_input(result: str | None) -> None:
+            if result:  # User provided search pattern
+                diff_pane.execute_search(result)
+                match_count = len(diff_pane.search_state.matches)
+                if match_count > 0:
+                    self.notify(f"Found {match_count} match(es)", severity="information")
+                else:
+                    self.notify("No matches found", severity="information")
+
+        self.push_screen(CommentInput(prompt="Search:", prefill=""), handle_search_input)
+
+    def action_next_search_match(self) -> None:
+        """Navigate to next search match (n key).
+
+        The raccoon hops to the next shiny thing!
+        """
+        two_pane = self.query_one(TwoPaneLayout, expect_type=TwoPaneLayout)
+        diff_pane = two_pane._diff_pane
+
+        if diff_pane and diff_pane.search_state.matches:
+            diff_pane.scroll_to_next_match()
+
+    def action_previous_search_match(self) -> None:
+        """Navigate to previous search match (N key).
+
+        The raccoon hops back to the previous shiny thing!
+        """
+        two_pane = self.query_one(TwoPaneLayout, expect_type=TwoPaneLayout)
+        diff_pane = two_pane._diff_pane
+
+        if diff_pane and diff_pane.search_state.matches:
+            diff_pane.scroll_to_previous_match()
+
+    def action_edit_comment(self) -> None:
+        """Edit or delete comment at cursor (e key).
+
+        The goat polishes its treasured notes!
+        """
+        # Get DiffPane and delegate to its edit action
+        two_pane = self.query_one(TwoPaneLayout, expect_type=TwoPaneLayout)
+        diff_pane = two_pane._diff_pane
+
+        if diff_pane:
+            diff_pane.action_edit_comment()
 
     def action_toggle_raccoon_mode(self) -> None:
         """

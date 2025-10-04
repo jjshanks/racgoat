@@ -122,21 +122,44 @@ class CommentStore:
         )
         return [c for _, c in sorted_comments]
 
-    def update(self, target: CommentTarget, new_text: str) -> None:
+    def get_comments_for_file(self, file_path: str) -> list[Comment]:
+        """Alias for get_file_comments() for contract compatibility.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            All line, range, and file-level comments for the file,
+            sorted by line number (file-level comments first)
+        """
+        return self.get_file_comments(file_path)
+
+    def update(self, target: CommentTarget | str, new_text: str) -> None:
         """Update the text of an existing comment.
 
         Args:
-            target: Target location of comment to update
+            target: Either a CommentTarget or a comment_id (str) to update
             new_text: New comment text
 
         Raises:
-            KeyError: If no comment exists at target
+            KeyError: If no comment exists at target or with comment_id
             ValueError: If new_text is empty
             ValueError: If multiple comments exist (ambiguous update)
         """
         if not new_text or not new_text.strip():
             raise ValueError("Comment text must not be empty")
 
+        # Handle update by comment_id (Milestone 5 pattern)
+        if isinstance(target, str):
+            comment_id = target
+            if comment_id not in self._unique_comments:
+                raise KeyError(f"No comment with id {comment_id} found")
+
+            comment = self._unique_comments[comment_id]
+            comment.text = new_text
+            return
+
+        # Handle update by CommentTarget (Milestone 3 pattern)
         # Determine key from target
         if target.is_line_comment:
             key = (target.file_path, target.line_number)
@@ -158,18 +181,56 @@ class CommentStore:
         comment = comments[0]
         comment.text = new_text
 
-    def delete(self, target: CommentTarget, comment_id: Optional[str] = None) -> None:
+    def delete(self, target: CommentTarget | str, comment_id: Optional[str] = None) -> None:
         """Remove a comment from the store.
 
         Args:
-            target: Target location of comment to delete
-            comment_id: Optional comment ID (required if multiple comments exist)
+            target: Either a CommentTarget or a comment_id (str) to delete
+            comment_id: Optional comment ID (only used when target is CommentTarget)
 
         Raises:
-            KeyError: If no comment exists at target
+            KeyError: If no comment exists at target or with comment_id
             ValueError: If multiple comments exist and comment_id is None
             KeyError: If comment_id provided but no matching comment found
         """
+        # Handle delete by comment_id alone (Milestone 5 pattern)
+        if isinstance(target, str):
+            comment_id_to_delete = target
+            if comment_id_to_delete not in self._unique_comments:
+                raise KeyError(f"No comment with id {comment_id_to_delete} found")
+
+            comment = self._unique_comments[comment_id_to_delete]
+
+            # Remove from all locations based on comment type
+            if comment.target.is_range_comment:
+                start, end = comment.target.line_range
+                for line_num in range(start, end + 1):
+                    line_key = (comment.target.file_path, line_num)
+                    if line_key in self._comments:
+                        self._comments[line_key] = [
+                            c for c in self._comments[line_key] if c.id != comment_id_to_delete
+                        ]
+                        if not self._comments[line_key]:
+                            del self._comments[line_key]
+            else:
+                # Line or file comment
+                if comment.target.is_line_comment:
+                    key = (comment.target.file_path, comment.target.line_number)
+                else:
+                    key = (comment.target.file_path, None)
+
+                if key in self._comments:
+                    self._comments[key] = [
+                        c for c in self._comments[key] if c.id != comment_id_to_delete
+                    ]
+                    if not self._comments[key]:
+                        del self._comments[key]
+
+            # Remove from unique tracker
+            del self._unique_comments[comment_id_to_delete]
+            return
+
+        # Handle delete by CommentTarget (Milestone 3 pattern)
         # Determine key from target
         if target.is_line_comment:
             key = (target.file_path, target.line_number)
@@ -230,6 +291,17 @@ class CommentStore:
         if not comments:
             del self._comments[key]
 
+    def get_by_id(self, comment_id: str) -> Optional[Comment]:
+        """Get a comment by its unique ID.
+
+        Args:
+            comment_id: Unique comment ID to retrieve
+
+        Returns:
+            Comment instance if found, None if not found
+        """
+        return self._unique_comments.get(comment_id)
+
     def has_comment(self, file_path: str, line_number: Optional[int]) -> bool:
         """Check if a comment exists at a specific location.
 
@@ -256,3 +328,32 @@ class CommentStore:
         """Remove all comments from the store."""
         self._comments.clear()
         self._unique_comments.clear()
+
+    def get_comment_at_cursor(self, file_path: str, cursor_line: int) -> Optional[Comment]:
+        """Get the first comment at cursor position (for edit operations).
+
+        This method supports Milestone 5 edit functionality by finding any comment
+        at the cursor position:
+        - Line comments: Exact line match
+        - Range comments: If cursor is within the range
+        - File comments: Returns file comment if no line/range comment found
+
+        Args:
+            file_path: Current file being viewed
+            cursor_line: Current line number where cursor is positioned (>= 1)
+
+        Returns:
+            First comment found at cursor position, or None if no comment exists
+            Priority: Line comment > Range comment > File comment
+        """
+        # Check for line comment first (exact match)
+        key = (file_path, cursor_line)
+        if key in self._comments and self._comments[key]:
+            return self._comments[key][0]
+
+        # Check for file-level comment as fallback
+        file_key = (file_path, None)
+        if file_key in self._comments and self._comments[file_key]:
+            return self._comments[file_key][0]
+
+        return None

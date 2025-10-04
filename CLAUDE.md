@@ -36,19 +36,36 @@ uv run pytest tests/integration/test_milestone2/ -v
 uv run pytest tests/unit/test_diff_parser.py -v
 ```
 
-## Quick Start (Milestone 2)
+## Quick Start (Milestone 5 - Advanced Interaction & Usability)
 
 ```bash
 # Generate a sample diff
 git diff HEAD~1 > sample.diff
 
 # Launch TUI to review the diff
-uv run python -m racgoat < sample.diff
+uv run python -m racgoat -o review.md < sample.diff
 
+# Keybindings (Milestone 5):
 # Navigation:
-# - Arrow keys: Navigate file list
-# - q: Quit application
-# - First file is auto-selected on launch
+#   - Arrow keys: Navigate file list or scroll diff
+#   - Tab: Switch focus between Files Pane and Diff Pane
+#   - q: Quit and save review to file
+#
+# Commenting:
+#   - a: Add line comment at cursor
+#   - s: Enter Select Mode to create range comment
+#   - c: Add file-level comment
+#   - e: Edit or delete existing comment at cursor
+#
+# Search:
+#   - /: Enter search mode
+#   - Enter: Execute search (after typing pattern)
+#   - n: Jump to next match
+#   - N: Jump to previous match (Shift+n)
+#   - Esc: Exit search mode and clear highlights
+#
+# Help:
+#   - ?: Show/hide help overlay with all keybindings
 ```
 
 ## Architecture
@@ -186,10 +203,18 @@ When implementing PRD features (docs/prd.md), follow the milestone sequence in d
    - 📊 Total test count: **87 tests** (57 from M1-M2 + 30 from M4)
    - ✅ Performance validated: 100 comments serialize <5s, file write <1s
 
-5. **Milestone 5 - Advanced Interaction & Usability:**
-   - Comment edit/delete functionality (e)
-   - Search functionality (/) within diff view
-   - Help overlay (?) displaying all keybindings
+5. **Milestone 5 - Advanced Interaction & Usability (✅ COMPLETE):**
+   - ✅ Comment edit/delete functionality (`e` key)
+   - ✅ Search functionality (`/` key) within diff view with case-sensitive literal matching
+   - ✅ Help overlay (`?` key) displaying all keybindings
+   - ✅ Edit preserves comment type (LINE/RANGE/FILE)
+   - ✅ Delete via empty text with confirmation
+   - ✅ Search navigation (`n`/`N`) with wrap-around
+   - ✅ Search highlights: current match visually distinct from other matches
+   - ✅ File switch resets search state
+   - ✅ Context-sensitive status bar updates
+   - ✅ **All 98 tests passing** (35 contract + 63 integration)
+   - ✅ Performance validated: Search <200ms (2000 lines), Edit <100ms (100+ comments)
 
 6. **Milestone 6 - Performance Hardening & Final Polish:**
    - Lazy loading and viewport rendering for 100 files / 10k lines
