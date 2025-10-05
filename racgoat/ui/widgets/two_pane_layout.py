@@ -14,7 +14,7 @@ from racgoat.ui.widgets.files_pane import FilesPane
 from racgoat.ui.widgets.diff_pane import DiffPane
 
 if TYPE_CHECKING:
-    from racgoat.services.comment_store import CommentStore
+    from racgoat.di import ServiceContainer
 
 
 class TwoPaneLayout(Horizontal):
@@ -25,7 +25,7 @@ class TwoPaneLayout(Horizontal):
 
     Attributes:
         diff_summary: The parsed diff data to display
-        comment_store: Optional comment store for Milestone 3
+        services: Optional service container for dependency injection
     """
 
     BINDINGS = [
@@ -43,7 +43,8 @@ class TwoPaneLayout(Horizontal):
         self,
         diff_summary: DiffSummary,
         *,
-        comment_store: "CommentStore | None" = None,
+        services: "ServiceContainer | None" = None,
+        comment_store: "ServiceContainer | None" = None,  # Deprecated: backward compatibility
         name: str | None = None,
         id: str | None = None,
     ) -> None:
@@ -51,13 +52,16 @@ class TwoPaneLayout(Horizontal):
 
         Args:
             diff_summary: Parsed diff data
-            comment_store: Optional comment store for Milestone 3
+            services: Optional service container for dependency injection
+            comment_store: Deprecated - use services instead (backward compatibility only)
             name: Widget name (optional)
             id: Widget ID (optional, default: "two-pane-layout")
         """
         super().__init__(name=name, id=id or "two-pane-layout")
         self.diff_summary = diff_summary
-        self.comment_store = comment_store
+        self.services = services
+        # Backward compatibility: support old comment_store parameter
+        self._comment_store_legacy = comment_store if comment_store is not None else None
         self._files_pane: FilesPane | None = None
         self._diff_pane: DiffPane | None = None
 
@@ -67,7 +71,13 @@ class TwoPaneLayout(Horizontal):
         Creates Files Pane on left, Diff Pane on right.
         """
         self._files_pane = FilesPane(self.diff_summary, id="files-pane")
-        self._diff_pane = DiffPane(comment_store=self.comment_store, id="diff-pane")
+
+        # Get comment_store from services or legacy parameter
+        comment_store = (
+            self.services.comment_store if self.services
+            else self._comment_store_legacy
+        )
+        self._diff_pane = DiffPane(comment_store=comment_store, id="diff-pane")
 
         yield self._files_pane
         yield self._diff_pane

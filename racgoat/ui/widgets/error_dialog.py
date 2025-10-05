@@ -11,6 +11,8 @@ from textual.screen import ModalScreen
 from textual.widgets import Static, Input, Button
 from textual.binding import Binding
 
+from racgoat.constants import MODAL_WIDTH_MEDIUM
+
 
 class ErrorRecoveryScreen(ModalScreen[str | None]):
     """Modal dialog for file write error recovery.
@@ -23,60 +25,60 @@ class ErrorRecoveryScreen(ModalScreen[str | None]):
         original_path: The original path that failed (for context)
     """
 
-    DEFAULT_CSS = """
-    ErrorRecoveryScreen {
+    DEFAULT_CSS = f"""
+    ErrorRecoveryScreen {{
         align: center middle;
-    }
+    }}
 
-    #error-dialog {
-        width: 70;
+    #error-dialog {{
+        width: {MODAL_WIDTH_MEDIUM};
         height: auto;
         border: thick $error;
         background: $surface;
         padding: 1 2;
-    }
+    }}
 
-    #error-title {
+    #error-title {{
         width: 100%;
         content-align: center middle;
         color: $error;
         margin-bottom: 1;
         text-style: bold;
-    }
+    }}
 
-    #error-message {
+    #error-message {{
         width: 100%;
         margin-bottom: 1;
         color: $text;
-    }
+    }}
 
-    #path-prompt {
+    #path-prompt {{
         width: 100%;
         margin-bottom: 1;
         color: $accent;
-    }
+    }}
 
-    #path-input {
+    #path-input {{
         width: 100%;
         margin-bottom: 1;
-    }
+    }}
 
-    #path-error {
+    #path-error {{
         width: 100%;
         margin-bottom: 1;
         color: $error;
-    }
+    }}
 
-    #button-container {
+    #button-container {{
         width: 100%;
         height: auto;
         layout: horizontal;
         align: center middle;
-    }
+    }}
 
-    Button {
+    Button {{
         margin: 0 1;
-    }
+    }}
     """
 
     BINDINGS = [

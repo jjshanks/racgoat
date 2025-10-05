@@ -188,6 +188,89 @@ class CommentMarker:
             )
 
 
+# Milestone 6: Performance & Viewport Models
+
+
+@dataclass
+class ViewportState:
+    """Track visible portion of diff for rendering optimization.
+
+    Like a goat on a mountain, focusing only on the rocks within view!
+
+    Attributes:
+        start_line: First visible line index (0-indexed)
+        end_line: Last visible line index (0-indexed, exclusive)
+        total_lines: Total lines in current file
+        visible_height: Terminal viewport height in lines
+
+    Lifecycle:
+        1. INIT: Created when file selected, start_line=0, end_line=visible_height
+        2. SCROLL: Updated on scroll event, recalculate start/end based on offset
+        3. FILE_SWITCH: Reset to start_line=0 for new file
+
+    Validation:
+        - start_line must be >= 0
+        - end_line must be > start_line
+        - total_lines must be >= 0
+        - visible_height must be > 0
+    """
+
+    start_line: int
+    end_line: int
+    total_lines: int
+    visible_height: int
+
+    def __post_init__(self):
+        """Validate viewport state after initialization."""
+        if self.start_line < 0:
+            raise ValueError(f"start_line must be >= 0, got {self.start_line}")
+        if self.end_line <= self.start_line:
+            raise ValueError(f"end_line must be > start_line, got {self.end_line} <= {self.start_line}")
+        if self.total_lines < 0:
+            raise ValueError(f"total_lines must be >= 0, got {self.total_lines}")
+        if self.visible_height <= 0:
+            raise ValueError(f"visible_height must be > 0, got {self.visible_height}")
+
+
+@dataclass
+class LazyFileContent:
+    """Deferred rich text generation for unselected files.
+
+    The raccoon doesn't unwrap every treasure until it needs to shine!
+
+    Attributes:
+        file_path: File identifier
+        diff_file: Parsed file data from DiffFile
+        rich_text: Materialized Rich Text (None until selected)
+        is_materialized: True when rich_text populated
+
+    Lifecycle:
+        1. PARSED: is_materialized=False, rich_text=None
+        2. SELECTED: Build Rich Text from diff_file hunks, is_materialized=True
+        3. DESELECTED: Optionally clear rich_text to free memory (implementation decision)
+
+    Validation:
+        - file_path must be non-empty
+        - diff_file must be a valid DiffFile instance
+        - is_materialized must match whether rich_text is None
+    """
+
+    file_path: str
+    diff_file: DiffFile
+    rich_text: object | None = None  # Type is rich.text.Text, but avoid import
+    is_materialized: bool = False
+
+    def __post_init__(self):
+        """Validate lazy file content after initialization."""
+        if not self.file_path:
+            raise ValueError("file_path must be non-empty")
+        # Check materialization consistency
+        if self.is_materialized and self.rich_text is None:
+            raise ValueError("is_materialized=True requires rich_text to be set")
+        if not self.is_materialized and self.rich_text is not None:
+            raise ValueError("is_materialized=False requires rich_text to be None")
+
+
 # Milestone 5: Search and Edit Models
 
 

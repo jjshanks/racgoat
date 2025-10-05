@@ -9,6 +9,8 @@ from textual.containers import Container, Horizontal
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
+from racgoat.constants import MODAL_WIDTH_XSMALL
+
 
 class ConfirmDialog(ModalScreen[bool]):
     """Simple Yes/No confirmation dialog.
@@ -28,37 +30,38 @@ class ConfirmDialog(ModalScreen[bool]):
         )
     """
 
-    DEFAULT_CSS = """
-    ConfirmDialog {
+    DEFAULT_CSS = f"""
+    ConfirmDialog {{
         align: center middle;
-    }
+    }}
 
-    #confirm-dialog {
-        width: 50;
+    #confirm-dialog {{
+        width: {MODAL_WIDTH_XSMALL};
         height: auto;
         border: thick $warning;
         background: $surface;
         padding: 1 2;
-    }
+    }}
 
-    .confirm-message {
+    .confirm-message {{
         text-align: center;
         margin-bottom: 2;
         color: $text;
-    }
+    }}
 
-    .confirm-buttons {
+    .confirm-buttons {{
         align: center middle;
         height: auto;
-    }
+    }}
 
-    .confirm-buttons Button {
+    .confirm-buttons Button {{
         margin: 0 1;
-    }
+    }}
     """
 
     BINDINGS = [
-        Binding("escape", "cancel", "Cancel", show=False),
+        Binding("escape", "cancel", "Cancel (No)", show=True),
+        Binding("enter", "confirm", "Confirm (Yes)", show=True),
     ]
 
     def __init__(self, message: str):
@@ -78,6 +81,11 @@ class ConfirmDialog(ModalScreen[bool]):
                 yield Button("Yes", variant="error", id="yes")
                 yield Button("No", variant="primary", id="no")
 
+    def on_mount(self) -> None:
+        """Focus Yes button when mounted so Enter confirms deletion."""
+        yes_button = self.query_one("#yes", Button)
+        yes_button.focus()
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press.
 
@@ -87,6 +95,10 @@ class ConfirmDialog(ModalScreen[bool]):
         # Return True for Yes, False for No
         self.dismiss(event.button.id == "yes")
 
+    def action_confirm(self) -> None:
+        """Handle Enter key - confirm deletion (Yes)."""
+        self.dismiss(True)
+
     def action_cancel(self) -> None:
-        """Handle Esc key - dismiss with False."""
+        """Handle Esc key - cancel deletion (No)."""
         self.dismiss(False)

@@ -12,6 +12,8 @@ from enum import Enum
 from typing import Optional
 from uuid import uuid4
 
+from racgoat.constants import MAX_COMMENT_LENGTH
+
 
 class CommentType(Enum):
     """Types of comments supported by RacGoat.
@@ -117,21 +119,25 @@ class SerializableComment:
     and optimized for output generation.
 
     Args:
-        text: Comment content (Markdown preserved, 1-10,000 chars)
+        text: Comment content (Markdown preserved, 1-MAX_COMMENT_LENGTH chars)
         comment_type: Discriminator for comment type ("line", "range", "file")
+        comment_id: Optional unique identifier (e.g., "c1", "c2"), auto-generated during serialization
+        status: Comment status (default: "open", options: "open", "addressed", "wontfix")
 
     Raises:
-        ValueError: If text is empty or exceeds 10,000 characters
+        ValueError: If text is empty or exceeds MAX_COMMENT_LENGTH characters
     """
     text: str
     comment_type: str  # Literal["line", "range", "file"] but using str for compatibility
+    comment_id: str | None = None
+    status: str = "open"
 
     def __post_init__(self):
         """Validate comment text constraints."""
         if not self.text or len(self.text) < 1:
             raise ValueError("Comment text must not be empty (min 1 character)")
-        if len(self.text) > 10_000:
-            raise ValueError("Comment text exceeds maximum length (10,000 characters)")
+        if len(self.text) > MAX_COMMENT_LENGTH:
+            raise ValueError(f"Comment text exceeds maximum length ({MAX_COMMENT_LENGTH:,} characters)")
 
 
 @dataclass(frozen=True)
@@ -232,6 +238,8 @@ class ReviewSession:
     Derived Properties:
         total_comment_count: Sum of comments across all files
         has_comments: Whether any comments exist (determines file output)
+        review_id: Timestamp-based unique identifier (YYYYMMDD-HHMMSS)
+        files_reviewed: Count of files with comments
 
     Raises:
         ValueError: If total comments across all files exceed 100
@@ -249,6 +257,25 @@ class ReviewSession:
     def has_comments(self) -> bool:
         """Whether any comments exist in the session."""
         return self.total_comment_count > 0
+
+    @property
+    def review_id(self) -> str:
+        """Generate timestamp-based unique review ID.
+
+        Returns:
+            Review ID in format YYYYMMDD-HHMMSS (e.g., "20250104-143022")
+        """
+        from datetime import datetime
+        return datetime.now().strftime("%Y%m%d-%H%M%S")
+
+    @property
+    def files_reviewed(self) -> int:
+        """Count of files with comments.
+
+        Returns:
+            Number of files in file_reviews dictionary
+        """
+        return len(self.file_reviews)
 
     def __post_init__(self):
         """Validate total comment count."""

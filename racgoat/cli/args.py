@@ -24,6 +24,11 @@ def parse_arguments() -> argparse.Namespace:
         help='Output file path (default: review.md)'
     )
     parser.add_argument(
+        '-s', '--staged',
+        action='store_true',
+        help='Run git diff --staged in current directory (when no input is piped)'
+    )
+    parser.add_argument(
         '--diff-file',
         dest='diff_file',
         help=argparse.SUPPRESS  # Hidden internal argument

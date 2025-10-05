@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/jjshanks/racgoat#readme
+    about: Read the documentation and user guide
+  - name: 💬 Discussions
+    url: https://github.com/jjshanks/racgoat/discussions
+    about: Ask questions and discuss ideas with the community

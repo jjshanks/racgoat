@@ -1,0 +1,69 @@
+diff --git a/auth/login.py b/auth/login.py
+index abc1234..def5678 100644
+--- a/auth/login.py
++++ b/auth/login.py
+@@ -12,12 +12,18 @@ from database import db
+ from models.user import User
+ from utils.validators import validate_email
+
+-def authenticate(username, password):
++def authenticate(username, password, mfa_token=None):
+     """Authenticate user and return session token.
+
+     Args:
+         username: User's email or username
+         password: Plain text password
++        mfa_token: Optional MFA token for 2FA
+     """
+-    user = db.query(User).filter_by(username=username).first()
+-    return user.check_password(password)
++    # TODO: Add rate limiting
++    user = db.query(User).filter_by(username=username).first()
++
++    if not user or not user.check_password(password):
++        raise AuthenticationError("Invalid credentials")
++
++    return generate_session_token(user)
+diff --git a/auth/session.py b/auth/session.py
+new file mode 100644
+index 0000000..9876543
+--- /dev/null
++++ b/auth/session.py
+@@ -0,0 +1,24 @@
++"""Session management for authenticated users."""
++
++import secrets
++import hashlib
++from datetime import datetime, timedelta
++
++SESSION_EXPIRY = timedelta(hours=24)
++
++def generate_session_token(user):
++    """Generate secure session token.
++
++    Args:
++        user: Authenticated user object
++
++    Returns:
++        str: Hex-encoded session token
++    """
++    token = secrets.token_hex(32)
++    expiry = datetime.utcnow() + SESSION_EXPIRY
++
++    # Store in session table
++    db.sessions.insert(user_id=user.id, token=token, expiry=expiry)
++
++    return token
+diff --git a/models/user.py b/models/user.py
+index 1111111..2222222 100644
+--- a/models/user.py
++++ b/models/user.py
+@@ -45,7 +45,7 @@ class User(Base):
+         Returns:
+             bool: True if password matches
+         """
+-        return self.password_hash == password
++        return hashlib.sha256(password.encode()).hexdigest() == self.password_hash
+
+     def update_last_login(self):
+         """Update user's last login timestamp."""

@@ -134,3 +134,33 @@ def trash_panda_search(haystack: str, needle: str) -> bool:
     """
     # Raccoons are case-insensitive - they don't care about your conventions!
     return needle.lower() in haystack.lower()
+
+
+def generate_goat_ascii_art() -> str:
+    """
+    Generate Mountain Goat ASCII art for GOAT mode.
+
+    Because the GREATEST OF ALL TIME deserves epic ASCII! 🐐
+
+    Returns:
+        A string containing majestic mountain goat ASCII art
+    """
+    art = r"""
+    🐐 GOAT MODE 🐐
+
+         /\
+        /  \
+       /    \      The summit
+      /______\     awaits!
+
+        (\/)
+       (o o)       Mountain goat
+      /|   |\      climbing to
+     (_|   |_)     greatness!
+       || ||
+       || ||
+      _|| ||_
+
+    "Baa-lieve in yourself! You're the GOAT! 🏔️"
+    """
+    return art

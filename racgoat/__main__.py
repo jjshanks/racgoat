@@ -15,7 +15,8 @@ import selectors
 
 from racgoat.cli.args import parse_arguments
 from racgoat.main import main, run_tui
-from racgoat.parser.diff_parser import parse_diff
+from racgoat.parser.diff_parser import DiffParser
+from racgoat.exceptions import DiffTooLargeError
 
 
 def run() -> None:
@@ -41,15 +42,47 @@ def run() -> None:
         try:
             with open(args.diff_file, "r") as f:
                 diff_input = f.read()
-            diff_summary = parse_diff(diff_input.splitlines(keepends=True))
+            parser = DiffParser()
+            diff_summary = parser.parse(diff_input)
             run_tui(diff_summary, output_file=args.output)
+        except DiffTooLargeError as e:
+            # Show error and exit
+            sys.stderr.write(f"\n🦝 This diff is too large!\n\n")
+            sys.stderr.write(f"RacGoat can handle up to {e.limit:,} lines,\n")
+            sys.stderr.write(f"but this diff has {e.actual_lines:,}.\n\n")
+            sys.stderr.write(f"Consider reviewing in smaller chunks. 🐐\n\n")
+            sys.exit(1)
         except (OSError, IOError):
             # Fallback to legacy mode on file read error
             main(diff_file=args.diff_file, output_file=args.output)
     elif stdin_tty:
-        # Interactive mode - no diff, show empty state
+        # Interactive mode - try to run git diff automatically
         from racgoat.parser.models import DiffSummary
-        run_tui(DiffSummary(files=[]), output_file=args.output)
+
+        try:
+            # Determine which git command to run based on -s flag
+            git_cmd = ["git", "diff", "--staged"] if args.staged else ["git", "diff"]
+
+            # Try to run git diff in the current directory
+            result = subprocess.run(
+                git_cmd,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            # Check if git diff succeeded and returned content
+            if result.returncode == 0 and result.stdout.strip():
+                # Parse the git diff output
+                parser = DiffParser()
+                diff_summary = parser.parse(result.stdout)
+                run_tui(diff_summary, output_file=args.output)
+            else:
+                # git diff failed or returned empty, show empty state
+                run_tui(DiffSummary(files=[]), output_file=args.output)
+        except (subprocess.TimeoutExpired, FileNotFoundError, DiffTooLargeError):
+            # git not found, timeout, or diff too large - show empty state
+            run_tui(DiffSummary(files=[]), output_file=args.output)
     else:
         # Piped stdin mode - check if /dev/tty is available
         try:
@@ -64,8 +97,17 @@ def run() -> None:
             # No /dev/tty available - parse stdin and launch TUI (Milestone 2)
             # This happens in environments like CI/CD or non-interactive shells
             stdin_data = sys.stdin.read()
-            diff_summary = parse_diff(stdin_data.splitlines(keepends=True))
-            run_tui(diff_summary, output_file=args.output)
+            try:
+                parser = DiffParser()
+                diff_summary = parser.parse(stdin_data)
+                run_tui(diff_summary, output_file=args.output)
+            except DiffTooLargeError as e:
+                # Show error and exit
+                sys.stderr.write(f"\n🦝 This diff is too large!\n\n")
+                sys.stderr.write(f"RacGoat can handle up to {e.limit:,} lines,\n")
+                sys.stderr.write(f"but this diff has {e.actual_lines:,}.\n\n")
+                sys.stderr.write(f"Consider reviewing in smaller chunks. 🐐\n\n")
+                sys.exit(1)
         else:
             # /dev/tty available - use toolong pattern for proper interactive TUI
             def request_exit(*args_signal) -> None:

@@ -4,13 +4,53 @@ build-backend = "hatchling.build"
 
 [project]
 name = "racgoat"
-version = "0.1.0"
-description = "A TUI app that's part raccoon mischief, part goat stubbornness"
+version = "1.0.0"
+description = "A TUI app for reviewing git diffs - part raccoon mischief, part goat stubbornness"
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "RacGoat Contributors"},
+]
+keywords = [
+    "tui",
+    "terminal",
+    "textual",
+    "git",
+    "diff",
+    "code-review",
+    "cli",
+    "raccoon",
+    "goat",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Version Control :: Git",
+    "Topic :: Terminals",
+    "Topic :: Text Processing",
+    "Typing :: Typed",
+]
 dependencies = [
     "textual>=6.2.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/jjshanks/racgoat"
+Repository = "https://github.com/jjshanks/racgoat"
+Documentation = "https://github.com/jjshanks/racgoat#readme"
+Issues = "https://github.com/jjshanks/racgoat/issues"
+Changelog = "https://github.com/jjshanks/racgoat/blob/main/CHANGELOG.md"
+
+[project.scripts]
+racgoat = "racgoat.__main__:run"
 
 [dependency-groups]
 dev = [

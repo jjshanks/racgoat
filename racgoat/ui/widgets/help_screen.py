@@ -9,6 +9,8 @@ from textual.containers import Container, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Static
 
+from racgoat.constants import MODAL_WIDTH_MEDIUM, MODAL_MAX_HEIGHT_PERCENT
+
 from racgoat.ui.models import HelpEntry
 
 
@@ -36,13 +38,13 @@ HELP_ENTRIES = [
 
     # Commenting
     HelpEntry(
-        key="a",
+        key="c",
         action="Add line comment",
         description="Create comment for current line",
         context="Commenting"
     ),
     HelpEntry(
-        key="c",
+        key="Shift+C",
         action="Add file comment",
         description="Create file-level comment",
         context="Commenting"
@@ -117,51 +119,51 @@ class HelpScreen(ModalScreen[None]):
         app.push_screen(HelpScreen())
     """
 
-    DEFAULT_CSS = """
-    HelpScreen {
+    DEFAULT_CSS = f"""
+    HelpScreen {{
         align: center middle;
-    }
+    }}
 
-    #help-dialog {
-        width: 70;
+    #help-dialog {{
+        width: {MODAL_WIDTH_MEDIUM};
         height: auto;
-        max-height: 90%;
+        max-height: {MODAL_MAX_HEIGHT_PERCENT}%;
         border: thick $primary;
         background: $surface;
         padding: 1 2;
-    }
+    }}
 
-    .help-title {
+    .help-title {{
         text-align: center;
         text-style: bold;
         color: $accent;
         margin-bottom: 1;
-    }
+    }}
 
-    .help-section-title {
+    .help-section-title {{
         text-style: bold;
         color: $primary;
         margin-top: 1;
         margin-bottom: 1;
-    }
+    }}
 
-    .help-entry {
+    .help-entry {{
         margin-bottom: 1;
-    }
+    }}
 
-    .help-key {
+    .help-key {{
         text-style: bold;
         color: $warning;
-    }
+    }}
 
-    .help-action {
+    .help-action {{
         color: $accent;
-    }
+    }}
 
-    .help-description {
+    .help-description {{
         color: $text;
         margin-left: 4;
-    }
+    }}
     """
 
     BINDINGS = [

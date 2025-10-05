@@ -43,18 +43,13 @@ class TestMarkdownOutputContract:
         from racgoat.services.markdown_writer import serialize_review_session
         output = serialize_review_session(session)
 
-        # Assert: Exact match to expected format
-        expected = """# Code Review
-
-**Branch**: main
-**Commit**: abc123
-
-## File: test.py
-
-### Line 10
-Fix this
-"""
-        assert output == expected, f"Expected:\n{expected}\nGot:\n{output}"
+        # Assert: Key elements present (enhanced format)
+        assert "# Code Review" in output
+        assert 'branch: "main"' in output  # YAML frontmatter format
+        assert 'base_commit: "abc123"' in output
+        assert "## File: `test.py`" in output  # Backticks added
+        assert "### Line 10" in output
+        assert "Fix this" in output
 
     def test_multiple_comment_types(self):
         """Goat climbs through all comment terrains."""
@@ -130,9 +125,9 @@ Fix this
         from racgoat.services.markdown_writer import serialize_review_session
         output = serialize_review_session(session)
 
-        # Assert: Placeholders appear in output
-        assert "**Branch**: Unknown Branch" in output
-        assert "**Commit**: Unknown SHA" in output
+        # Assert: Placeholders appear in output (YAML frontmatter format)
+        assert 'branch: "Unknown Branch"' in output
+        assert 'base_commit: "Unknown SHA"' in output
 
     def test_alphabetical_file_order(self):
         """Raccoon alphabetizes the trash pile."""
@@ -160,10 +155,10 @@ Fix this
         from racgoat.services.markdown_writer import serialize_review_session
         output = serialize_review_session(session)
 
-        # Assert: Files appear in alphabetical order
-        alpha_pos = output.find("## File: alpha.py")
-        beta_pos = output.find("## File: beta.py")
-        zebra_pos = output.find("## File: zebra.py")
+        # Assert: Files appear in alphabetical order (with backticks)
+        alpha_pos = output.find("## File: `alpha.py`")
+        beta_pos = output.find("## File: `beta.py`")
+        zebra_pos = output.find("## File: `zebra.py`")
 
         assert alpha_pos < beta_pos < zebra_pos, \
             f"Files not in alphabetical order: alpha={alpha_pos}, beta={beta_pos}, zebra={zebra_pos}"

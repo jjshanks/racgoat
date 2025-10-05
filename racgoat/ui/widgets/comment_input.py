@@ -9,6 +9,8 @@ from textual.screen import ModalScreen
 from textual.widgets import Input, Label, Button
 from textual.binding import Binding
 
+from racgoat.constants import MODAL_WIDTH_SMALL
+
 
 class CommentInput(ModalScreen[str | None]):
     """Modal screen for comment input.
@@ -20,42 +22,50 @@ class CommentInput(ModalScreen[str | None]):
         prefill: Pre-filled text for editing existing comments
     """
 
-    DEFAULT_CSS = """
-    CommentInput {
+    DEFAULT_CSS = f"""
+    CommentInput {{
         align: center middle;
-    }
+    }}
 
-    #comment-dialog {
-        width: 60;
+    #comment-dialog {{
+        width: {MODAL_WIDTH_SMALL};
         height: auto;
         border: thick $primary;
         background: $surface;
         padding: 1 2;
-    }
+    }}
 
-    #comment-prompt {
+    #comment-prompt {{
         width: 100%;
         content-align: center middle;
         color: $accent;
         margin-bottom: 1;
         text-style: bold;
-    }
+    }}
 
-    #comment-input {
+    #delete-hint {{
+        width: 100%;
+        content-align: center middle;
+        color: $warning;
+        margin-bottom: 1;
+        text-style: italic;
+    }}
+
+    #comment-input {{
         width: 100%;
         margin-bottom: 1;
-    }
+    }}
 
-    #button-container {
+    #button-container {{
         width: 100%;
         height: auto;
         layout: horizontal;
         align: center middle;
-    }
+    }}
 
-    Button {
+    Button {{
         margin: 0 1;
-    }
+    }}
     """
 
     BINDINGS = [
@@ -87,6 +97,12 @@ class CommentInput(ModalScreen[str | None]):
         """Compose the modal dialog."""
         with Container(id="comment-dialog"):
             yield Label(self.prompt, id="comment-prompt")
+            # Add hint for deletion if this is an edit operation (has prefill)
+            if self.prefill:
+                yield Label(
+                    "💡 Tip: Clear all text and press Enter to delete this comment",
+                    id="delete-hint"
+                )
             self._input_widget = Input(
                 value=self.prefill,
                 placeholder="Type your comment here...",
@@ -117,11 +133,8 @@ class CommentInput(ModalScreen[str | None]):
         """Submit the comment text."""
         if self._input_widget:
             text = self._input_widget.value.strip()
-            if text:  # Only submit non-empty text
-                self.dismiss(text)
-            else:
-                # Empty text = cancel
-                self.dismiss(None)
+            # Return empty string for deletion, not None
+            self.dismiss(text)
 
     def action_cancel(self) -> None:
         """Cancel the input (Esc key or Cancel button)."""

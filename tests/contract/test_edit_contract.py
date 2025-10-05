@@ -237,8 +237,18 @@ class TestEditContract:
             await pilot.press("e")
             await pilot.pause()
 
-            # Simulate clearing text and confirming
-            # (Implementation will handle empty string as delete)
+            # Clear the input text
+            modal_screen = app.screen_stack[-1]
+            input_widget = modal_screen.query_one("#comment-input")
+            input_widget.value = ""  # Clear all text
+
+            # Submit the empty text (triggers delete confirmation)
+            await pilot.press("enter")
+            await pilot.pause()
+
+            # Confirm deletion by pressing Enter (Yes button is auto-focused)
+            await pilot.press("enter")
+            await pilot.pause()
 
             # Assert: Comment should be deleted from store
             comment = app.comment_store.get_by_id(comment_id)

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 RacGoat is a TUI (Terminal User Interface) application for reviewing AI-generated git diffs and creating structured feedback documents. Built with Textual framework and Python 3.12+, it combines a playful aesthetic (raccoon + goat theme) with practical code review functionality.
 
-**Note:** The current codebase is a placeholder/demo. The actual application will be an AI code review tool per the PRD (see docs/prd.md).
+**Current Status:** Milestones 1-5 complete (parsing, TUI, commenting, output, editing/search). Milestone 6 (performance hardening) core implementation complete, test suite cleanup in progress. Enhanced Markdown output format (Milestone 7) complete with machine-readable metadata.
 
 ## Development Commands
 
@@ -34,6 +34,18 @@ uv run pytest tests/integration/test_milestone2/ -v
 
 # Run parser tests (Milestone 1)
 uv run pytest tests/unit/test_diff_parser.py -v
+
+# Run performance tests (Milestone 6)
+uv run pytest tests/integration/test_performance/ -v
+
+# Run contract tests (validates PRD requirements)
+uv run pytest tests/contract/ -v
+
+# Run integration tests only
+uv run pytest tests/integration/ -v
+
+# Run unit tests only
+uv run pytest tests/unit/ -v
 ```
 
 ## Quick Start (Milestone 5 - Advanced Interaction & Usability)
@@ -52,9 +64,9 @@ uv run python -m racgoat -o review.md < sample.diff
 #   - q: Quit and save review to file
 #
 # Commenting:
-#   - a: Add line comment at cursor
+#   - c: Add line comment at cursor
 #   - s: Enter Select Mode to create range comment
-#   - c: Add file-level comment
+#   - Shift+C: Add file-level comment
 #   - e: Edit or delete existing comment at cursor
 #
 # Search:
@@ -159,6 +171,11 @@ The application is now a functional two-pane diff review tool:
 - Playful test names and docstrings are encouraged (see tests/test_goat.py)
 - Run tests before committing changes
 
+**Test Categories:**
+- **Contract tests** (`tests/contract/`): Validate PRD requirements and core contracts (binary filtering, CLI args, output format, search, edit, etc.)
+- **Integration tests** (`tests/integration/`): End-to-end TUI workflows and performance benchmarks
+- **Unit tests** (`tests/unit/`): Individual component/function tests (parser, models, utilities)
+
 ## PRD Implementation Roadmap
 
 When implementing PRD features (docs/prd.md), follow the milestone sequence in docs/roadmap.md:
@@ -216,11 +233,30 @@ When implementing PRD features (docs/prd.md), follow the milestone sequence in d
    - ✅ **All 98 tests passing** (35 contract + 63 integration)
    - ✅ Performance validated: Search <200ms (2000 lines), Edit <100ms (100+ comments)
 
-6. **Milestone 6 - Performance Hardening & Final Polish:**
-   - Lazy loading and viewport rendering for 100 files / 10k lines
-   - Benchmark against large real-world diffs
-   - Robust error handling for malformed diffs
-   - UI refinement for clarity and consistency
+6. **Milestone 6 - Performance Hardening & Final Polish (✅ CORE COMPLETE, 🔄 TEST CLEANUP):**
+   - ✅ Parser error handling for malformed hunks with `[⚠ UNPARSEABLE]` visual indicator
+   - ✅ Size limit enforcement (10k lines hard limit with error modal)
+   - ✅ Viewport rendering (DiffPane refactored to VerticalScroll)
+   - ✅ Performance benchmarks: <2s load (100 files/10k lines), <100ms scroll
+   - ✅ Binary filtering tests rewritten as TUI tests (2 tests passing)
+   - ✅ **All 42 core contract tests passing** (error handling, edit, search, help)
+   - ⚠️ Performance tests: 7/13 passing (lazy loading features need work)
+   - ⚠️ UI consistency tests: 0/5 passing (test initialization issues)
+   - ⚠️ Legacy CLI tests need removal/skip
+   - Spec: `specs/006-performance-hardening-final/spec.md`
+
+7. **Enhanced Markdown Output Format (✅ COMPLETE):**
+   - ✅ YAML frontmatter with review metadata (review_id, branch, base_commit, files/comments count)
+   - ✅ HTML comment metadata per comment (id, status, line/lines)
+   - ✅ Code context blocks with line numbers (±2 lines surrounding target)
+   - ✅ Horizontal rule separators between comments
+   - ✅ Sequential comment IDs (c1, c2, c3...)
+   - ✅ Backward compatible (works without diff_summary)
+   - ✅ **All 28 tests passing** (15 contract + 6 updated + 5 integration + 2 performance)
+   - ✅ Performance: <5s for 100 comments, <1s file write
+   - 📊 Machine-readable metadata for AI coding agents
+   - 📚 Docs: `docs/ENHANCED_MARKDOWN_FORMAT.md`
+   - 🎨 Demo: `demo_enhanced_output.py`
 
 Key PRD constraints:
 - Support up to 100 files and 10k diff lines

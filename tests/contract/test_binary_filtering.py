@@ -1,118 +1,126 @@
-"""Contract tests for binary file filtering.
+"""Contract tests for binary file filtering (Milestone 6).
 
-Tests verify that binary files (marked with "Binary files ... differ") are
-excluded from the output summary, per contracts/cli-interface.md Test 4.
+Milestone 6: TUI tests verify binary files are excluded from file list,
+per parser-contracts.md Scenarios 1-2.
+
+Old CLI tests removed - RacGoat is now a TUI application.
 """
 
-import subprocess
-import tempfile
-from pathlib import Path
+import pytest
 
 
-def test_binary_files_excluded():
-    """Binary files should be excluded from output (no file created if all filtered)"""
+# Milestone 6: TUI-specific binary filtering tests (T013-T014)
+
+
+@pytest.mark.asyncio
+async def test_binary_files_excluded_from_tui_list():
+    """Binary files should be excluded from TUI file list (not CLI exit).
+
+    The raccoon only displays treasures it can review!
+
+    Contract: parser-contracts.md Scenario 1
+    Requirement: FR-020 (binary files excluded from TUI, not CLI rejection)
+    """
+    from racgoat.main import RacGoatApp
+    from racgoat.ui.widgets.files_pane import FilesPane
+    from racgoat.parser.diff_parser import DiffParser
+    from textual.widgets import ListView
+
     diff_input = """diff --git a/image.png b/image.png
 Binary files a/image.png and b/image.png differ
-"""
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        output_file = Path(tmpdir) / "review.md"
-
-        result = subprocess.run(
-            ["python", "-m", "racgoat", "-o", str(output_file)],
-            input=diff_input,
-            text=True,
-            capture_output=True,
-            timeout=5
-        )
-
-        # Should succeed (exit 0) even though all files filtered
-        assert result.returncode == 0, f"Expected exit 0, got {result.returncode}"
-
-        # No output file should be created (all files filtered)
-        assert not output_file.exists(), "Output file should not be created when all files are filtered"
-
-
-def test_binary_file_excluded_with_text_file():
-    """Binary files excluded, text files included in output"""
-    diff_input = """diff --git a/image.png b/image.png
-Binary files a/image.png and b/image.png differ
-diff --git a/src/main.py b/src/main.py
+diff --git a/package-lock.json b/package-lock.json
 index 1234567..abcdefg 100644
---- a/src/main.py
-+++ b/src/main.py
-@@ -1,1 +1,2 @@
- line1
-+line2
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -1,2 +1,2 @@
+-old lock
++new lock
+diff --git a/main.py b/main.py
+index 1234567..abcdefg 100644
+--- a/main.py
++++ b/main.py
+@@ -1,1 +1,1 @@
+-print("old")
++print("new")
 """
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        output_file = Path(tmpdir) / "review.md"
+    # Parse diff first
+    parser = DiffParser()
+    summary = parser.parse(diff_input)
 
-        result = subprocess.run(
-            ["python", "-m", "racgoat", "-o", str(output_file)],
-            input=diff_input,
-            text=True,
-            capture_output=True,
-            timeout=5
-        )
+    # Verify parser excluded binary and generated files
+    # Should have only main.py (image.png and package-lock.json excluded)
+    assert len(summary.files) == 1
+    assert summary.files[0].file_path == "main.py"
 
-        assert result.returncode == 0
-        assert output_file.exists(), "Output file should be created for non-binary files"
+    # Create app with parsed diff
+    app = RacGoatApp(diff_summary=summary)
 
-        content = output_file.read_text()
+    async with app.run_test() as pilot:
+        # Wait for app to render
+        await pilot.pause()
 
-        # Binary file should not appear in output
-        assert "image.png" not in content, "Binary file should not appear in output"
+        # Get files pane and check visible files
+        files_pane = app.query_one(FilesPane)
+        file_list = files_pane.query_one(ListView)
 
-        # Text file should appear
-        assert "src/main.py" in content, "Text file should appear in output"
-        assert "+1 -0" in content, "Text file changes should be counted"
+        # Should only show text files (main.py)
+        visible_items = list(file_list.children)
+
+        # Should have only 1 file (main.py) - binary and generated excluded
+        assert len(visible_items) == 1
+
+        # The fact that we have exactly 1 item and the parser returned
+        # only main.py means the binary filtering worked correctly
 
 
-def test_multiple_binary_files_excluded():
-    """Multiple binary files all excluded"""
-    diff_input = """diff --git a/image1.png b/image1.png
-Binary files a/image1.png and b/image1.png differ
+@pytest.mark.asyncio
+async def test_all_binary_shows_placeholder():
+    """When all files are binary, TUI shows empty message (not exit).
+
+    The raccoon stays put even when there's nothing to review!
+
+    Contract: parser-contracts.md Scenario 2
+    Requirement: FR-021 (placeholder when no reviewable files)
+    """
+    from racgoat.main import RacGoatApp
+    from racgoat.parser.diff_parser import DiffParser
+    from textual.widgets import Static
+
+    diff_input = """diff --git a/logo.png b/logo.png
+Binary files a/logo.png and b/logo.png differ
 diff --git a/icon.jpg b/icon.jpg
 Binary files a/icon.jpg and b/icon.jpg differ
-diff --git a/data.bin b/data.bin
-Binary files a/data.bin and b/data.bin differ
 """
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        output_file = Path(tmpdir) / "review.md"
+    # Parse diff
+    parser = DiffParser()
+    summary = parser.parse(diff_input)
 
-        result = subprocess.run(
-            ["python", "-m", "racgoat", "-o", str(output_file)],
-            input=diff_input,
-            text=True,
-            capture_output=True,
-            timeout=5
-        )
+    # Should have no files (all binary)
+    assert len(summary.files) == 0
+    assert summary.is_empty is True
 
-        # All files are binary, so no output file
-        assert result.returncode == 0
-        assert not output_file.exists(), "No output file when all files are binary"
+    # Create app with empty summary
+    app = RacGoatApp(diff_summary=summary)
 
+    async with app.run_test() as pilot:
+        # Wait for app to render
+        await pilot.pause()
 
-def test_binary_marker_detection():
-    """Verify exact binary marker format is detected"""
-    # Standard git binary marker format
-    diff_input = """diff --git a/file.dat b/file.dat
-Binary files a/file.dat and b/file.dat differ
-"""
+        # App should show empty message
+        empty_message = app.query_one("#empty-message", Static)
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        output_file = Path(tmpdir) / "review.md"
+        # The Static widget was created with text content in main.py
+        # We need to check if the widget exists (which proves empty state is shown)
+        # The actual text is set in main.py:182-186
+        assert empty_message is not None
 
-        result = subprocess.run(
-            ["python", "-m", "racgoat", "-o", str(output_file)],
-            input=diff_input,
-            text=True,
-            capture_output=True,
-            timeout=5
-        )
+        # Verify the app shows the empty state (not the two-pane layout)
+        # If we can query empty-message, it means we're showing the placeholder
+        from racgoat.ui.widgets import TwoPaneLayout
+        two_pane_exists = len(app.query(TwoPaneLayout)) > 0
+        assert not two_pane_exists, "Should not show two-pane layout when all files are binary"
 
-        assert result.returncode == 0
-        assert not output_file.exists()
+        # App should remain open (not exit like old CLI behavior)
+        # This is implicit - if we get here, app didn't exit

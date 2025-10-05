@@ -5,9 +5,11 @@ through them like a goat hopping from rock to rock!
 """
 
 from textual.app import ComposeResult
-from textual.containers import VerticalScroll
+from textual.containers import VerticalScroll, Vertical
 from textual.message import Message
-from textual.widgets import ListItem, ListView, Label
+from textual.widgets import ListItem, ListView, Label, Static
+
+from racgoat.constants import FILES_PANE_WIDTH_PERCENT
 
 from racgoat.parser.models import DiffFile, DiffSummary
 from racgoat.ui.models import FilesListItem
@@ -24,27 +26,34 @@ class FilesPane(VerticalScroll):
     """
 
     can_focus = False
-    DEFAULT_CSS = """
-    FilesPane {
-        width: 30%;
+    DEFAULT_CSS = f"""
+    FilesPane {{
+        width: {FILES_PANE_WIDTH_PERCENT}%;
         border: solid $accent;
-    }
+    }}
 
-    FilesPane:focus-within {
+    FilesPane:focus-within {{
         border: solid $primary;
-    }
+    }}
 
-    FilesPane ListView {
+    FilesPane ListView {{
         height: 100%;
-    }
+    }}
 
-    FilesPane .file-item {
+    FilesPane .file-item {{
         height: 1;
-    }
+    }}
 
-    FilesPane .file-item.-selected {
+    FilesPane .file-item.-selected {{
         background: $boost;
-    }
+    }}
+
+    FilesPane #files-footer {{
+        height: 1;
+        padding: 0 1;
+        background: $panel;
+        color: $text-muted;
+    }}
     """
 
     class FileSelected(Message):
@@ -104,6 +113,17 @@ class FilesPane(VerticalScroll):
         ], id="files-list")
 
         yield self._list_view
+
+        # Add footer with binary file skip count
+        file_count = len(self.diff_summary.files)
+        binary_count = self.diff_summary.binary_files_skipped
+
+        if binary_count > 0:
+            footer_text = f"{file_count} file{'s' if file_count != 1 else ''} ({binary_count} binary/generated skipped)"
+        else:
+            footer_text = f"{file_count} file{'s' if file_count != 1 else ''}"
+
+        yield Static(footer_text, id="files-footer")
 
     def on_mount(self) -> None:
         """Select first file after mounting.
@@ -197,3 +217,37 @@ class FilesPane(VerticalScroll):
         if self._list_view:
             return self._list_view.has_focus
         return super().has_focus
+
+    def next_file(self) -> None:
+        """Navigate to next file with wrap-around.
+
+        The raccoon hops to the next treasure in the pile!
+        """
+        if not self._list_view or not self._file_items:
+            return
+
+        current_index = self._list_view.index
+        if current_index is None:
+            # No selection, select first
+            self._list_view.index = 0
+        else:
+            # Wrap around to first if at end
+            next_index = (current_index + 1) % len(self._file_items)
+            self._list_view.index = next_index
+
+    def previous_file(self) -> None:
+        """Navigate to previous file with wrap-around.
+
+        The raccoon hops back to the previous treasure!
+        """
+        if not self._list_view or not self._file_items:
+            return
+
+        current_index = self._list_view.index
+        if current_index is None:
+            # No selection, select last
+            self._list_view.index = len(self._file_items) - 1
+        else:
+            # Wrap around to last if at beginning
+            prev_index = (current_index - 1) % len(self._file_items)
+            self._list_view.index = prev_index
