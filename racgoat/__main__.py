@@ -94,20 +94,46 @@ def run() -> None:
             has_tty = False
 
         if not has_tty:
-            # No /dev/tty available - parse stdin and launch TUI (Milestone 2)
-            # This happens in environments like CI/CD or non-interactive shells
-            stdin_data = sys.stdin.read()
-            try:
-                parser = DiffParser()
-                diff_summary = parser.parse(stdin_data)
-                run_tui(diff_summary, output_file=args.output)
-            except DiffTooLargeError as e:
-                # Show error and exit
-                sys.stderr.write(f"\n🦝 This diff is too large!\n\n")
-                sys.stderr.write(f"RacGoat can handle up to {e.limit:,} lines,\n")
-                sys.stderr.write(f"but this diff has {e.actual_lines:,}.\n\n")
-                sys.stderr.write(f"Consider reviewing in smaller chunks. 🐐\n\n")
-                sys.exit(1)
+            # No /dev/tty available - use headless CLI mode (Milestone 1)
+            # This happens in environments like CI/CD, subprocess.run(), or non-interactive shells
+            # Check if stdout is also not a TTY (captured/redirected) → use CLI text output
+            if not sys.stdout.isatty():
+                # Headless mode: Parse stdin and write text summary to file
+                stdin_data = sys.stdin.read()
+                try:
+                    parser = DiffParser()
+                    diff_summary = parser.parse(stdin_data)
+
+                    # Only write output if there are files to report
+                    if not diff_summary.is_empty:
+                        with open(args.output, 'w') as f:
+                            f.write(diff_summary.format_output())
+
+                    sys.exit(0)
+                except DiffTooLargeError as e:
+                    # Show error and exit
+                    sys.stderr.write(f"\n🦝 This diff is too large!\n\n")
+                    sys.stderr.write(f"RacGoat can handle up to {e.limit:,} lines,\n")
+                    sys.stderr.write(f"but this diff has {e.actual_lines:,}.\n\n")
+                    sys.stderr.write(f"Consider reviewing in smaller chunks. 🐐\n\n")
+                    sys.exit(1)
+                except Exception as e:
+                    sys.stderr.write(f"Error: {e}\n")
+                    sys.exit(1)
+            else:
+                # stdin is piped but stdout is a TTY - try to launch TUI
+                stdin_data = sys.stdin.read()
+                try:
+                    parser = DiffParser()
+                    diff_summary = parser.parse(stdin_data)
+                    run_tui(diff_summary, output_file=args.output)
+                except DiffTooLargeError as e:
+                    # Show error and exit
+                    sys.stderr.write(f"\n🦝 This diff is too large!\n\n")
+                    sys.stderr.write(f"RacGoat can handle up to {e.limit:,} lines,\n")
+                    sys.stderr.write(f"but this diff has {e.actual_lines:,}.\n\n")
+                    sys.stderr.write(f"Consider reviewing in smaller chunks. 🐐\n\n")
+                    sys.exit(1)
         else:
             # /dev/tty available - use toolong pattern for proper interactive TUI
             def request_exit(*args_signal) -> None:
