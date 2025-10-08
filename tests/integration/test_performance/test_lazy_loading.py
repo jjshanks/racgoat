@@ -25,12 +25,10 @@ async def test_lazy_loading_memory():
     diff_text = _generate_many_files_diff(files=100, lines_per_file=50)
 
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
+    app = RacGoatApp(diff_summary=summary)
 
     async with app.run_test() as pilot:
-        # Parse and load diff
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
         await pilot.pause()
 
         # Check lazy files dict
@@ -62,12 +60,10 @@ async def test_materialization_on_selection():
     diff_text = _generate_many_files_diff(files=10, lines_per_file=20)
 
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
+    app = RacGoatApp(diff_summary=summary)
 
     async with app.run_test() as pilot:
-        # Parse and load diff
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
         await pilot.pause()
 
         # Initially, only first file materialized
@@ -99,12 +95,10 @@ async def test_lazy_loading_with_large_diff():
     diff_text = _generate_many_files_diff(files=100, lines_per_file=100)
 
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
+    app = RacGoatApp(diff_summary=summary)
 
     async with app.run_test() as pilot:
-        # Parse and load diff
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
         await pilot.pause()
 
         # Check that not all files are materialized

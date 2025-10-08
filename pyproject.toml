@@ -56,4 +56,11 @@ racgoat = "racgoat.__main__:run"
 dev = [
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
+    "pytest-timeout>=2.4.0",
 ]
+
+[tool.pytest.ini_options]
+# Timeout configuration to prevent hanging tests
+timeout = 30
+timeout_method = "thread"
+asyncio_mode = "auto"

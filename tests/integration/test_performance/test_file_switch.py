@@ -26,12 +26,10 @@ async def test_file_switch_latency():
     diff_text = _generate_multi_file_diff(files=10, lines_per_file=100)
 
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
+    app = RacGoatApp(diff_summary=summary)
 
     async with app.run_test() as pilot:
-        # Parse and load diff
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
         await pilot.pause()
 
         # Measure file switch time
@@ -69,12 +67,10 @@ async def test_large_file_switch():
     diff_text = _generate_multi_file_diff(files=1, lines_per_file=1000)
 
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
+    app = RacGoatApp(diff_summary=summary)
 
     async with app.run_test() as pilot:
-        # Parse and load diff
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
         await pilot.pause()
 
         # File should already be selected, but measure render time

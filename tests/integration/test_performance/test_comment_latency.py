@@ -26,12 +26,10 @@ async def test_comment_addition_performance():
     diff_text = _generate_test_diff()
 
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
+    app = RacGoatApp(diff_summary=summary)
 
     async with app.run_test() as pilot:
-        # Parse and load diff
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
         await pilot.pause()
 
         # Measure comment addition time
@@ -69,12 +67,10 @@ async def test_comment_with_existing_comments():
     diff_text = _generate_test_diff()
 
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
+    app = RacGoatApp(diff_summary=summary)
 
     async with app.run_test() as pilot:
-        # Parse and load diff
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
         await pilot.pause()
 
         # Add 100 comments first

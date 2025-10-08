@@ -27,11 +27,10 @@ async def test_keybinding_format():
     """
     diff_text = _generate_test_diff()
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
+    app = RacGoatApp(diff_summary=summary)
 
     async with app.run_test() as pilot:
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
         await pilot.pause()
 
         # Open help overlay
@@ -107,11 +106,10 @@ broken content
 """
 
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
+    app = RacGoatApp(diff_summary=summary)
 
     async with app.run_test() as pilot:
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
         await pilot.pause()
 
         # Get diff pane content
@@ -139,11 +137,10 @@ async def test_help_text_terminology():
     """
     diff_text = _generate_test_diff()
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
+    app = RacGoatApp(diff_summary=summary)
 
     async with app.run_test() as pilot:
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
         await pilot.pause()
 
         # Open help overlay
@@ -180,11 +177,10 @@ async def test_grammar_and_spelling():
     """
     diff_text = _generate_test_diff()
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
+    app = RacGoatApp(diff_summary=summary)
 
     async with app.run_test() as pilot:
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
         await pilot.pause()
 
         # Get help text

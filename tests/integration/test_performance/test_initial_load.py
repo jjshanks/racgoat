@@ -26,15 +26,13 @@ async def test_small_diff_load():
     diff_text = _generate_diff(files=10, lines_per_file=10)
 
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
 
     start_time = time.perf_counter()
 
-    async with app.run_test() as pilot:
-        # Parse and load diff
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
+    app = RacGoatApp(diff_summary=summary)
 
+    async with app.run_test() as pilot:
         # Wait for first render
         await pilot.pause()
 
@@ -65,15 +63,13 @@ async def test_large_diff_load():
     diff_text = _generate_diff(files=100, lines_per_file=100)
 
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
 
     start_time = time.perf_counter()
 
-    async with app.run_test() as pilot:
-        # Parse and load diff
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
+    app = RacGoatApp(diff_summary=summary)
 
+    async with app.run_test() as pilot:
         # Wait for first render
         await pilot.pause()
 
@@ -102,15 +98,13 @@ async def test_medium_diff_load():
     diff_text = _generate_diff(files=50, lines_per_file=20)
 
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
 
     start_time = time.perf_counter()
 
-    async with app.run_test() as pilot:
-        # Parse and load diff
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
+    app = RacGoatApp(diff_summary=summary)
 
+    async with app.run_test() as pilot:
         # Wait for first render
         await pilot.pause()
 

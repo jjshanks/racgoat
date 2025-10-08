@@ -26,12 +26,10 @@ async def test_rapid_scroll():
     diff_text = _generate_large_file_diff(lines=1000)
 
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
+    app = RacGoatApp(diff_summary=summary)
 
     async with app.run_test() as pilot:
-        # Parse and load diff
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
         await pilot.pause()
 
         # Perform rapid scrolling
@@ -68,12 +66,10 @@ async def test_page_down_performance():
     diff_text = _generate_large_file_diff(lines=2000)
 
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
+    app = RacGoatApp(diff_summary=summary)
 
     async with app.run_test() as pilot:
-        # Parse and load diff
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
         await pilot.pause()
 
         # Test page down performance
@@ -102,12 +98,10 @@ async def test_jump_to_end_performance():
     diff_text = _generate_large_file_diff(lines=5000)
 
     parser = DiffParser()
-    app = RacGoatApp()
+    summary = parser.parse(diff_text)
+    app = RacGoatApp(diff_summary=summary)
 
     async with app.run_test() as pilot:
-        # Parse and load diff
-        summary = parser.parse(diff_text)
-        app.diff_summary = summary
         await pilot.pause()
 
         # Jump to end
