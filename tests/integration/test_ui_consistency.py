@@ -37,9 +37,12 @@ async def test_keybinding_format():
         await pilot.press("?")
         await pilot.pause()
 
-        # Get help text
-        help_overlay = app.query_one("#help-overlay")
-        help_text = str(help_overlay.renderable)
+        # Get help text from modal screen
+        help_screen = app.screen_stack[-1]
+        help_dialog = help_screen.query_one("#help-dialog")
+        # Get text from all Static widgets in the dialog
+        help_widgets = help_dialog.query("Static")
+        help_text = "\n".join(str(widget.render()) for widget in help_widgets)
 
         # Assert: No lowercase single-key bindings (like "q -", "a -")
         lowercase_bindings = re.findall(r'\b[a-z] -', help_text)
@@ -52,7 +55,7 @@ async def test_keybinding_format():
         assert "Control-" not in help_text, "Found 'Control-' prefix, should use 'Ctrl+'"
 
         # Get footer text
-        footer_text = str(app.query_one("Footer").renderable)
+        footer_text = str(app.query_one("Footer").render())
 
         # Footer should also follow format
         assert not re.search(r'\b[a-z]:', footer_text.lower()), "Footer has lowercase keybindings"
@@ -86,7 +89,7 @@ async def test_error_message_theme():
 
     # Assert: Helpful text
     assert "smaller chunks" in error.message.lower(), "Error should provide actionable advice"
-    assert str(error.actual_lines) in error.message, "Error should show actual line count"
+    assert f"{error.actual_lines:,}" in error.message, "Error should show actual line count"
 
 
 @pytest.mark.asyncio
@@ -113,8 +116,8 @@ broken content
         await pilot.pause()
 
         # Get diff pane content
-        diff_pane = app.query_one("DiffPane")
-        diff_text_rendered = str(diff_pane.renderable)
+        diff_content = app.query_one("#diff-content")
+        diff_text_rendered = str(diff_content.render())
 
         # Assert: Contains warning indicator
         assert "[⚠ UNPARSEABLE]" in diff_text_rendered, "Should show unparseable marker"
@@ -147,9 +150,12 @@ async def test_help_text_terminology():
         await pilot.press("?")
         await pilot.pause()
 
-        # Get help text
-        help_overlay = app.query_one("#help-overlay")
-        help_text = str(help_overlay.renderable)
+        # Get help text from modal screen
+        help_screen = app.screen_stack[-1]
+        help_dialog = help_screen.query_one("#help-dialog")
+        # Get text from all Static widgets in the dialog
+        help_widgets = help_dialog.query("Static")
+        help_text = "\n".join(str(widget.render()) for widget in help_widgets)
 
         # Assert: Uses "Add comment" (not "Create", "Insert", "New")
         # Allow case variations but check terminology
@@ -187,8 +193,12 @@ async def test_grammar_and_spelling():
         await pilot.press("?")
         await pilot.pause()
 
-        help_overlay = app.query_one("#help-overlay")
-        help_text = str(help_overlay.renderable)
+        # Get help text from modal screen
+        help_screen = app.screen_stack[-1]
+        help_dialog = help_screen.query_one("#help-dialog")
+        # Get text from all Static widgets in the dialog
+        help_widgets = help_dialog.query("Static")
+        help_text = "\n".join(str(widget.render()) for widget in help_widgets)
 
         # Basic grammar checks
         # No sentence fragments starting with lowercase (unless intentional)

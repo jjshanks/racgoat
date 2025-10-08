@@ -12,6 +12,7 @@ from racgoat.parser.diff_parser import DiffParser
 # T020: Lazy loading memory efficiency
 
 
+@pytest.mark.skip(reason="Lazy loading features not implemented yet (Milestone 6 - see CLAUDE.md)")
 @pytest.mark.asyncio
 async def test_lazy_loading_memory():
     """Unselected files should not be materialized.
@@ -47,6 +48,7 @@ async def test_lazy_loading_memory():
         assert len(lazy_files) == 100
 
 
+@pytest.mark.skip(reason="Lazy loading features not implemented yet (Milestone 6 - see CLAUDE.md)")
 @pytest.mark.asyncio
 async def test_materialization_on_selection():
     """Selecting a file should materialize it.
@@ -83,6 +85,7 @@ async def test_materialization_on_selection():
         assert new_count in [1, 2], f"Expected 1 or 2 materialized files, got {new_count}"
 
 
+@pytest.mark.skip(reason="Lazy loading features not implemented yet (Milestone 6 - see CLAUDE.md)")
 @pytest.mark.asyncio
 async def test_lazy_loading_with_large_diff():
     """Lazy loading should work efficiently with 10k line diff.

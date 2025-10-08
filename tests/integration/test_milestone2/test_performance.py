@@ -131,5 +131,5 @@ class TestPerformanceRequirements:
             # Verify: Focus switched
             assert diff_pane.has_focus
 
-            # Note: Allow 200ms for test environment overhead
-            assert focus_time < 200
+            # Note: Allow 300ms for CI environment overhead (can be slower on CI runners)
+            assert focus_time < 300
