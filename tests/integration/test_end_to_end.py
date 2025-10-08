@@ -54,7 +54,8 @@ class TestEndToEndWorkflow:
         assert output_file.exists(), "Output file should be created"
         content = output_file.read_text()
         assert "# Code Review" in content
-        assert "**Branch**: main" in content
+        # Check for YAML frontmatter (enhanced Markdown format)
+        assert 'branch: "main"' in content, "Should have YAML frontmatter with branch"
         assert "### Line 5" in content
         assert "Fix this bug" in content
         assert "### Lines 10-15" in content
@@ -181,8 +182,9 @@ class TestEndToEndWorkflow:
         # Serialize with placeholders
         from racgoat.services.markdown_writer import serialize_review_session
         output = serialize_review_session(session)
-        assert "**Branch**: Unknown Branch" in output
-        assert "**Commit**: Unknown SHA" in output
+        # Check for YAML frontmatter (enhanced Markdown format)
+        assert 'branch: "Unknown Branch"' in output, "Should have YAML frontmatter with placeholder branch"
+        assert 'base_commit: "Unknown SHA"' in output, "Should have YAML frontmatter with placeholder commit"
 
     def test_special_chars_in_comments(self, tmp_path):
         """Raccoon preserves shiny Markdown syntax in comments."""

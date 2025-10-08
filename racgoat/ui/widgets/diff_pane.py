@@ -412,3 +412,45 @@ class DiffPane(VerticalScroll):
             # Refresh display to remove markers
             if self.current_file:
                 self.display_file(self.current_file, refresh_only=True)
+
+    # Compatibility method for tests
+    def format_hunk(self, hunk, file=None, current_line=None, app_mode=None,
+                    select_start_line=None, select_end_line=None, search_state=None):
+        """Proxy to renderer.format_hunk for backward compatibility.
+
+        This method exists to maintain compatibility with tests that were
+        written before the renderer refactoring.
+
+        Args:
+            hunk: DiffHunk to format
+            file: DiffFile (default: create stub with empty path)
+            current_line: Current cursor line
+            app_mode: Application mode
+            select_start_line: Selection start
+            select_end_line: Selection end
+            search_state: Search state
+
+        Returns:
+            Rich Text object with formatted hunk
+        """
+        # Import here to avoid circular dependency
+        from racgoat.parser.models import DiffFile
+        from racgoat.ui.models import ApplicationMode, SearchState
+
+        # Provide defaults for backward compatibility
+        if file is None:
+            file = DiffFile(file_path="", added_lines=0, removed_lines=0, hunks=[hunk])
+        if app_mode is None:
+            app_mode = ApplicationMode.NORMAL
+        if search_state is None:
+            search_state = SearchState()
+
+        return self.renderer.format_hunk(
+            hunk=hunk,
+            file=file,
+            current_line=current_line,
+            app_mode=app_mode,
+            select_start_line=select_start_line,
+            select_end_line=select_end_line,
+            search_state=search_state,
+        )

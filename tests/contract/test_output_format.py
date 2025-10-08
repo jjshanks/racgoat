@@ -2,13 +2,24 @@
 
 Tests verify that the output format matches the pattern specified in
 contracts/output-format.md: {path}: +{added} -{removed}
+
+NOTE: These tests are OBSOLETE. They test Milestone 1 CLI behavior where
+racgoat would output simple text summaries like "file.py: +10 -5".
+The app is now TUI-only (Milestone 2+) and only produces Markdown review
+files when the user adds comments and quits.
+
+These tests are kept for historical reference but skipped in CI.
 """
 
+import pytest
 import re
 import subprocess
 import tempfile
 import textwrap
 from pathlib import Path
+
+# Skip all tests in this module - they test obsolete Milestone 1 CLI behavior
+pytestmark = pytest.mark.skip(reason="Obsolete: Tests Milestone 1 CLI behavior, app is now TUI-only")
 
 
 def test_output_format_matches_pattern():

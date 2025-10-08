@@ -91,8 +91,8 @@ class TestEnhancedOutputIntegration:
                     comment_type=CommentType.FILE
                 ))
 
-                # Trigger save by calling _do_quit directly
-                await app._do_quit()
+                # Trigger save by calling action_quit directly
+                app.action_quit()
 
             # Verify output file
             assert os.path.exists(output_file), "Output file not created"
@@ -164,7 +164,7 @@ class TestEnhancedOutputIntegration:
                     comment_type=CommentType.LINE
                 ))
 
-                await app._do_quit()
+                app.action_quit()
 
             # Verify output
             with open(output_file, 'r') as f:
@@ -211,7 +211,7 @@ class TestEnhancedOutputIntegration:
                     comment_type=CommentType.LINE
                 ))
 
-                await app._do_quit()
+                app.action_quit()
 
             # Verify output
             with open(output_file, 'r') as f:
@@ -259,7 +259,7 @@ class TestEnhancedOutputIntegration:
                         comment_type=CommentType.LINE
                     ))
 
-                await app._do_quit()
+                app.action_quit()
 
             # Verify sequential IDs
             with open(output_file, 'r') as f:
@@ -306,7 +306,7 @@ class TestEnhancedOutputIntegration:
                         comment_type=CommentType.LINE
                     ))
 
-                await app._do_quit()
+                app.action_quit()
 
             # Verify horizontal rules
             with open(output_file, 'r') as f:
