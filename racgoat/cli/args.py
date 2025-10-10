@@ -2,6 +2,8 @@
 
 import argparse
 
+from racgoat import __version__
+
 
 def parse_arguments() -> argparse.Namespace:
     """Parse command-line arguments for the diff processor.
@@ -17,6 +19,11 @@ def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Parse git diff and generate summary",
         prog="racgoat"
+    )
+    parser.add_argument(
+        '--version',
+        action='version',
+        version=f'%(prog)s {__version__}'
     )
     parser.add_argument(
         '-o', '--output',
