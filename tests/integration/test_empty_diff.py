@@ -4,6 +4,7 @@ Tests quickstart.md Scenario 3: Empty diff handling.
 """
 
 import subprocess
+import sys
 import tempfile
 import os
 from pathlib import Path
@@ -27,7 +28,7 @@ def test_empty_diff_no_output():
         try:
             # Run the CLI with empty input
             result = subprocess.run(
-                ["python", "-m", "racgoat"],
+                [sys.executable, "-m", "racgoat"],
                 input=diff_input,
                 capture_output=True,
                 text=True,

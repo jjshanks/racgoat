@@ -5,6 +5,7 @@ are filtered (binary or generated).
 """
 
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -38,7 +39,7 @@ index 1234567..abcdefg 100644
 
         # Run CLI with diff input
         result = subprocess.run(
-            ["python", "-m", "racgoat", "-o", str(output_file)],
+            [sys.executable, "-m", "racgoat", "-o", str(output_file)],
             input=diff_input,
             text=True,
             capture_output=True,
@@ -73,7 +74,7 @@ Binary files a/photo.jpg and b/photo.jpg differ
 
         # Run CLI with diff input
         result = subprocess.run(
-            ["python", "-m", "racgoat", "-o", str(output_file)],
+            [sys.executable, "-m", "racgoat", "-o", str(output_file)],
             input=diff_input,
             text=True,
             capture_output=True,

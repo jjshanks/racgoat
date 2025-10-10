@@ -14,6 +14,7 @@ These tests are kept for historical reference but skipped in CI.
 import pytest
 import re
 import subprocess
+import sys
 import tempfile
 import textwrap
 from pathlib import Path
@@ -41,7 +42,7 @@ index 1234567..abcdefg 100644
         output_file = Path(tmpdir) / "review.md"
 
         result = subprocess.run(
-            ["python", "-m", "racgoat", "-o", str(output_file)],
+            [sys.executable, "-m", "racgoat", "-o", str(output_file)],
             input=diff_input,
             text=True,
             capture_output=True,
@@ -83,7 +84,7 @@ index 1234567..abcdefg 100644
         output_file = Path(tmpdir) / "review.md"
 
         result = subprocess.run(
-            ["python", "-m", "racgoat", "-o", str(output_file)],
+            [sys.executable, "-m", "racgoat", "-o", str(output_file)],
             input=diff_input,
             text=True,
             capture_output=True,
@@ -128,7 +129,7 @@ def test_output_format_zero_counts():
         output_file = Path(tmpdir) / "review.md"
 
         result = subprocess.run(
-            ["python", "-m", "racgoat", "-o", str(output_file)],
+            [sys.executable, "-m", "racgoat", "-o", str(output_file)],
             input=diff_new_file,
             text=True,
             capture_output=True,
@@ -160,7 +161,7 @@ def test_output_format_zero_counts():
         output_file = Path(tmpdir) / "review.md"
 
         result = subprocess.run(
-            ["python", "-m", "racgoat", "-o", str(output_file)],
+            [sys.executable, "-m", "racgoat", "-o", str(output_file)],
             input=diff_deleted_file,
             text=True,
             capture_output=True,
@@ -193,7 +194,7 @@ index 1234567..abcdefg 100644
         output_file = Path(tmpdir) / "review.md"
 
         result = subprocess.run(
-            ["python", "-m", "racgoat", "-o", str(output_file)],
+            [sys.executable, "-m", "racgoat", "-o", str(output_file)],
             input=diff_input,
             text=True,
             capture_output=True,
@@ -246,7 +247,7 @@ index 1234567..abcdefg 100644
         output_file = Path(tmpdir) / "review.md"
 
         result = subprocess.run(
-            ["python", "-m", "racgoat", "-o", str(output_file)],
+            [sys.executable, "-m", "racgoat", "-o", str(output_file)],
             input=diff_input,
             text=True,
             capture_output=True,

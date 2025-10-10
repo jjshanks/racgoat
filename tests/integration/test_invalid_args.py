@@ -5,6 +5,7 @@ command-line arguments.
 """
 
 import subprocess
+import sys
 
 
 def test_invalid_arguments_error():
@@ -17,7 +18,7 @@ def test_invalid_arguments_error():
     """
     # Test 1: Missing argument after -o flag
     result = subprocess.run(
-        ["python", "-m", "racgoat", "-o"],
+        [sys.executable, "-m", "racgoat", "-o"],
         input="",
         text=True,
         capture_output=True,
@@ -45,7 +46,7 @@ def test_unknown_flag_error():
     - Then: stderr contains usage and error, exit 2 (argparse usage error)
     """
     result = subprocess.run(
-        ["python", "-m", "racgoat", "--invalid-flag"],
+        [sys.executable, "-m", "racgoat", "--invalid-flag"],
         input="",
         text=True,
         capture_output=True,

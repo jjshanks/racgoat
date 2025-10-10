@@ -4,6 +4,7 @@ Test from contracts/cli-interface.md Test 3.
 """
 
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -18,7 +19,7 @@ def test_cli_handles_empty_diff():
 
         # Run CLI with empty input
         result = subprocess.run(
-            ["python", "-m", "racgoat"],
+            [sys.executable, "-m", "racgoat"],
             input="",
             capture_output=True,
             text=True,
@@ -43,7 +44,7 @@ def test_cli_handles_empty_diff_with_custom_output():
 
         # Run CLI with empty input and custom output file
         result = subprocess.run(
-            ["python", "-m", "racgoat", "-o", str(output_file)],
+            [sys.executable, "-m", "racgoat", "-o", str(output_file)],
             input="",
             capture_output=True,
             text=True,

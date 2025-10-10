@@ -4,6 +4,7 @@ Test from contracts/cli-interface.md Test 7.
 """
 
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -14,7 +15,7 @@ def test_cli_rejects_missing_output_argument():
     """
     # Run CLI with -o flag but no argument
     result = subprocess.run(
-        ["python", "-m", "racgoat", "-o"],
+        [sys.executable, "-m", "racgoat", "-o"],
         input="",
         capture_output=True,
         text=True,
@@ -41,7 +42,7 @@ def test_cli_rejects_unknown_flag():
     """
     # Run CLI with unknown flag
     result = subprocess.run(
-        ["python", "-m", "racgoat", "--invalid-flag"],
+        [sys.executable, "-m", "racgoat", "--invalid-flag"],
         input="",
         capture_output=True,
         text=True,
@@ -68,7 +69,7 @@ def test_cli_rejects_multiple_invalid_flags():
     """
     # Run CLI with multiple unknown flags
     result = subprocess.run(
-        ["python", "-m", "racgoat", "--foo", "--bar"],
+        [sys.executable, "-m", "racgoat", "--foo", "--bar"],
         input="",
         capture_output=True,
         text=True,

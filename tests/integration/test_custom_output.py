@@ -4,6 +4,7 @@ Tests quickstart.md Scenario 2: Custom output with -o flag.
 """
 
 import subprocess
+import sys
 import tempfile
 import os
 from pathlib import Path
@@ -38,7 +39,7 @@ index 0000000..abcdefg
         try:
             # Run the CLI with custom output file
             result = subprocess.run(
-                ["python", "-m", "racgoat", "-o", "custom_summary.txt"],
+                [sys.executable, "-m", "racgoat", "-o", "custom_summary.txt"],
                 input=diff_input,
                 capture_output=True,
                 text=True,

@@ -4,6 +4,7 @@ Tests quickstart.md Scenario 4: Binary file filtering.
 """
 
 import subprocess
+import sys
 import tempfile
 import os
 from pathlib import Path
@@ -36,7 +37,7 @@ index 1234567..abcdefg 100644
         try:
             # Run the CLI
             result = subprocess.run(
-                ["python", "-m", "racgoat"],
+                [sys.executable, "-m", "racgoat"],
                 input=diff_input,
                 capture_output=True,
                 text=True,
