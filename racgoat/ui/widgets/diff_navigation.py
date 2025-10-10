@@ -162,9 +162,9 @@ class DiffNavigation:
 
         # NORMAL mode: move cursor up
         # Find previous valid line
+        prev_line = None
         for hunk in file.hunks:
             current_line_num = hunk.new_start
-            prev_line = None
 
             for change_type, _ in hunk.lines:
                 if change_type in ('+', ' '):
