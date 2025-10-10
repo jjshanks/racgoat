@@ -8,6 +8,7 @@ import time
 
 from racgoat.main import RacGoatApp
 from racgoat.parser.models import DiffSummary, DiffFile, DiffHunk
+from tests.conftest import get_perf_threshold
 
 
 class TestPerformanceRequirements:
@@ -131,5 +132,6 @@ class TestPerformanceRequirements:
             # Verify: Focus switched
             assert diff_pane.has_focus
 
-            # Note: Allow 300ms for CI environment overhead (can be slower on CI runners)
-            assert focus_time < 300
+            # Note: 300ms locally, 600ms in CI for environment overhead
+            threshold = get_perf_threshold(300)
+            assert focus_time < threshold

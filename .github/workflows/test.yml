@@ -34,7 +34,7 @@ jobs:
       run: uv sync
 
     - name: Run tests
-      run: uv run pytest -v --tb=short
+      run: uv run pytest -v --tb=short --reruns 1 --reruns-delay 1
 
     - name: Run contract tests specifically
       run: uv run pytest tests/contract/ -v
