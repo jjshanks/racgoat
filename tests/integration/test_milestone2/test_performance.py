@@ -47,8 +47,8 @@ class TestPerformanceRequirements:
             # Verify: Initial render completed
             files_pane = app.query_one("#files-pane")
             diff_pane = app.query_one("#diff-pane")
-            assert files_pane.file_count == 20
-            assert diff_pane.current_file is not None
+            assert files_pane.file_count == 20  # type: ignore[unresolved-attribute]
+            assert diff_pane.current_file is not None  # type: ignore[unresolved-attribute]
 
             # Note: 100ms is quite strict for full app initialization
             # We'll verify responsiveness but allow generous timing for CI
@@ -79,7 +79,7 @@ class TestPerformanceRequirements:
             diff_pane = app.query_one("#diff-pane")
 
             # Verify initial state
-            assert files_pane.get_selected_file().file_path == "src/file_0.py"
+            assert files_pane.get_selected_file().file_path == "src/file_0.py"  # type: ignore[unresolved-attribute]
 
             # Measure: File selection response time
             start = time.perf_counter()
@@ -88,8 +88,8 @@ class TestPerformanceRequirements:
             selection_time = (time.perf_counter() - start) * 1000
 
             # Verify: Selection changed
-            assert files_pane.get_selected_file().file_path == "src/file_1.py"
-            assert diff_pane.current_file.file_path == "src/file_1.py"
+            assert files_pane.get_selected_file().file_path == "src/file_1.py"  # type: ignore[unresolved-attribute]
+            assert diff_pane.current_file.file_path == "src/file_1.py"  # type: ignore[unresolved-attribute]
 
             # Note: Allow 200ms for test environment overhead
             assert selection_time < 200
@@ -121,7 +121,7 @@ class TestPerformanceRequirements:
             diff_pane = app.query_one("#diff-pane")
 
             # Verify initial focus
-            assert files_pane._list_view.has_focus
+            assert files_pane._list_view.has_focus  # type: ignore[unresolved-attribute]
 
             # Measure: Tab focus switch time
             start = time.perf_counter()

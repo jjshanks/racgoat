@@ -59,11 +59,11 @@ class TestVisualMarkers:
             app.comment_store.add(comment)
 
             # Update diff pane to reflect changes
-            diff_pane.display_file(diff_summary.files[0])
+            diff_pane.display_file(diff_summary.files[0])  # type: ignore[unresolved-attribute]
 
             # Verify diff pane updated and comment exists in store
             # (Detailed marker rendering check would require accessing internal widget state)
-            assert diff_pane.current_file.file_path == "marked.py"
+            assert diff_pane.current_file.file_path == "marked.py"  # type: ignore[unresolved-attribute]
             assert len(app.comment_store.get("marked.py", 2)) == 1
 
     @pytest.mark.asyncio
@@ -128,7 +128,7 @@ class TestVisualMarkers:
             assert len(comments_on_line2) == 2
 
             # Update diff pane
-            diff_pane.display_file(diff_summary.files[0])
+            diff_pane.display_file(diff_summary.files[0])  # type: ignore[unresolved-attribute]
 
             # Diff pane should be updated (detailed marker check would require rendering)
             assert diff_pane is not None

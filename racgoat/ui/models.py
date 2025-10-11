@@ -341,7 +341,7 @@ class SearchState:
     """
 
     query: SearchQuery | None = None
-    matches: list[SearchMatch] = None
+    matches: list[SearchMatch] | None = None
     current_index: int = -1
     file_path: str = ""
 

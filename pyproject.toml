@@ -58,6 +58,7 @@ dev = [
     "pytest-asyncio>=1.2.0",
     "pytest-rerunfailures>=16.1",
     "pytest-timeout>=2.4.0",
+    "ty>=0.0.1a22",
 ]
 
 [tool.pytest.ini_options]

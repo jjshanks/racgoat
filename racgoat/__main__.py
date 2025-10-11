@@ -31,7 +31,7 @@ def run() -> None:
     When stdin is a tty (interactive):
       - Launches TUI directly in current process
     """
-    stdin_tty = sys.__stdin__.isatty()
+    stdin_tty = sys.__stdin__.isatty() if sys.__stdin__ else False
 
     # Parse arguments (both modes need -o flag)
     args = parse_arguments()
@@ -84,44 +84,45 @@ def run() -> None:
             # git not found, timeout, or diff too large - show empty state
             run_tui(DiffSummary(files=[]), output_file=args.output)
     else:
-        # Piped stdin mode - check if /dev/tty is available
-        try:
-            # Try to open /dev/tty - if this fails, we can't run TUI interactively
-            with open("/dev/tty", "rb"):
-                pass
-            has_tty = True
-        except (OSError, IOError):
-            has_tty = False
+        # Piped stdin mode - check if stdout is captured (headless mode)
+        # Check stdout FIRST before trying /dev/tty to handle subprocess.run with capture_output=True
+        if not sys.stdout.isatty():
+            # Headless mode: stdout is captured/redirected, use CLI text output
+            # This happens in CI/CD, subprocess.run(..., capture_output=True), or non-interactive shells
+            stdin_data = sys.stdin.read()
+            try:
+                parser = DiffParser()
+                diff_summary = parser.parse(stdin_data)
 
-        if not has_tty:
-            # No /dev/tty available - use headless CLI mode (Milestone 1)
-            # This happens in environments like CI/CD, subprocess.run(), or non-interactive shells
-            # Check if stdout is also not a TTY (captured/redirected) → use CLI text output
-            if not sys.stdout.isatty():
-                # Headless mode: Parse stdin and write text summary to file
-                stdin_data = sys.stdin.read()
-                try:
-                    parser = DiffParser()
-                    diff_summary = parser.parse(stdin_data)
+                # Only write output if there are files to report
+                if not diff_summary.is_empty:
+                    with open(args.output, 'w') as f:
+                        f.write(diff_summary.format_output())
 
-                    # Only write output if there are files to report
-                    if not diff_summary.is_empty:
-                        with open(args.output, 'w') as f:
-                            f.write(diff_summary.format_output())
+                sys.exit(0)
+            except DiffTooLargeError as e:
+                # Show error and exit
+                sys.stderr.write(f"\n🦝 This diff is too large!\n\n")
+                sys.stderr.write(f"RacGoat can handle up to {e.limit:,} lines,\n")
+                sys.stderr.write(f"but this diff has {e.actual_lines:,}.\n\n")
+                sys.stderr.write(f"Consider reviewing in smaller chunks. 🐐\n\n")
+                sys.exit(1)
+            except Exception as e:
+                sys.stderr.write(f"Error: {e}\n")
+                sys.exit(1)
+        else:
+            # stdout is a TTY - check if /dev/tty is available for interactive TUI
+            try:
+                # Try to open /dev/tty - if this fails, we can't run TUI interactively
+                with open("/dev/tty", "rb"):
+                    pass
+                has_tty = True
+            except (OSError, IOError):
+                has_tty = False
 
-                    sys.exit(0)
-                except DiffTooLargeError as e:
-                    # Show error and exit
-                    sys.stderr.write(f"\n🦝 This diff is too large!\n\n")
-                    sys.stderr.write(f"RacGoat can handle up to {e.limit:,} lines,\n")
-                    sys.stderr.write(f"but this diff has {e.actual_lines:,}.\n\n")
-                    sys.stderr.write(f"Consider reviewing in smaller chunks. 🐐\n\n")
-                    sys.exit(1)
-                except Exception as e:
-                    sys.stderr.write(f"Error: {e}\n")
-                    sys.exit(1)
-            else:
-                # stdin is piped but stdout is a TTY - try to launch TUI
+            if not has_tty:
+                # No /dev/tty available but stdout is a TTY
+                # Read stdin and try to launch TUI directly
                 stdin_data = sys.stdin.read()
                 try:
                     parser = DiffParser()
@@ -134,60 +135,60 @@ def run() -> None:
                     sys.stderr.write(f"but this diff has {e.actual_lines:,}.\n\n")
                     sys.stderr.write(f"Consider reviewing in smaller chunks. 🐐\n\n")
                     sys.exit(1)
-        else:
-            # /dev/tty available - use toolong pattern for proper interactive TUI
-            def request_exit(*args_signal) -> None:
-                """Handle interrupts gracefully."""
-                sys.stderr.write("^C\n")
+            else:
+                # /dev/tty available - use toolong pattern for proper interactive TUI
+                def request_exit(*args_signal) -> None:
+                    """Handle interrupts gracefully."""
+                    sys.stderr.write("^C\n")
 
-            signal.signal(signal.SIGINT, request_exit)
-            signal.signal(signal.SIGTERM, request_exit)
+                signal.signal(signal.SIGINT, request_exit)
+                signal.signal(signal.SIGTERM, request_exit)
 
-            # Write piped data to temp file
-            with tempfile.NamedTemporaryFile(
-                mode="w+",
-                delete=False,
-                prefix="racgoat_",
-                suffix=".diff"
-            ) as temp_file:
-                temp_path = temp_file.name
+                # Write piped data to temp file
+                with tempfile.NamedTemporaryFile(
+                    mode="w+",
+                    delete=False,
+                    prefix="racgoat_",
+                    suffix=".diff"
+                ) as temp_file:
+                    temp_path = temp_file.name
 
-                try:
-                    # Open /dev/tty for subprocess stdin
-                    with open("/dev/tty", "rb", buffering=0) as tty_stdin:
-                        # Launch subprocess to render TUI
-                        process = subprocess.Popen(
-                            [sys.executable, "-m", "racgoat", "-o", args.output, "--diff-file", temp_path],
-                            stdin=tty_stdin,
-                            close_fds=True,
-                            env={**os.environ, "TEXTUAL_ALLOW_SIGNALS": "1"}
-                        )
-
-                        # Copy stdin to temp file while TUI runs
-                        selector = selectors.SelectSelector()
-                        selector.register(sys.stdin.fileno(), selectors.EVENT_READ)
-
-                        while process.poll() is None:
-                            for _, event in selector.select(0.1):
-                                if process.poll() is not None:
-                                    break
-                                chunk = sys.stdin.read(8192)
-                                if chunk:
-                                    temp_file.write(chunk)
-                                    temp_file.flush()
-                                else:
-                                    # EOF reached
-                                    break
-
-                        # Wait for process to complete
-                        process.wait()
-
-                finally:
-                    # Clean up temp file
                     try:
-                        os.unlink(temp_path)
-                    except OSError:
-                        pass
+                        # Open /dev/tty for subprocess stdin
+                        with open("/dev/tty", "rb", buffering=0) as tty_stdin:
+                            # Launch subprocess to render TUI
+                            process = subprocess.Popen(
+                                [sys.executable, "-m", "racgoat", "-o", args.output, "--diff-file", temp_path],
+                                stdin=tty_stdin,
+                                close_fds=True,
+                                env={**os.environ, "TEXTUAL_ALLOW_SIGNALS": "1"}
+                            )
+
+                            # Copy stdin to temp file while TUI runs
+                            selector = selectors.SelectSelector()
+                            selector.register(sys.stdin.fileno(), selectors.EVENT_READ)
+
+                            while process.poll() is None:
+                                for _, event in selector.select(0.1):
+                                    if process.poll() is not None:
+                                        break
+                                    chunk = sys.stdin.read(8192)
+                                    if chunk:
+                                        temp_file.write(chunk)
+                                        temp_file.flush()
+                                    else:
+                                        # EOF reached
+                                        break
+
+                            # Wait for process to complete
+                            process.wait()
+
+                    finally:
+                        # Clean up temp file
+                        try:
+                            os.unlink(temp_path)
+                        except OSError:
+                            pass
 
 
 if __name__ == "__main__":

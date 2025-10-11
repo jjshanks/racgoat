@@ -71,18 +71,18 @@ class TestMultiFileDiffLayout:
 
             # Verify: Files pane shows all 3 files
             files_pane = app.query_one("#files-pane")
-            assert files_pane.file_count == 3
+            assert files_pane.file_count == 3  # type: ignore[unresolved-attribute]
 
             # Verify: First file is selected
-            selected = files_pane.get_selected_file()
+            selected = files_pane.get_selected_file()  # type: ignore[unresolved-attribute]
             assert selected is not None
             assert selected.file_path == "src/foo.py"
 
             # Verify: Diff pane shows first file's diff
             diff_pane = app.query_one("#diff-pane")
-            assert diff_pane.current_file is not None
-            assert diff_pane.current_file.file_path == "src/foo.py"
+            assert diff_pane.current_file is not None  # type: ignore[unresolved-attribute]
+            assert diff_pane.current_file.file_path == "src/foo.py"  # type: ignore[unresolved-attribute]
 
             # Verify content by checking the rendered text
             rendered_text = str(diff_pane.render())
-            assert "src/foo.py" in rendered_text or diff_pane.current_file.file_path == "src/foo.py"
+            assert "src/foo.py" in rendered_text or diff_pane.current_file.file_path == "src/foo.py"  # type: ignore[unresolved-attribute]

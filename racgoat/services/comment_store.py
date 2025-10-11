@@ -69,6 +69,8 @@ class CommentStore:
 
         elif comment.target.is_range_comment:
             # Range comment - store one entry per line
+            if comment.target.line_range is None:
+                raise ValueError("Range comment must have line_range set")
             start, end = comment.target.line_range
             for line_num in range(start, end + 1):
                 key = (comment.target.file_path, line_num)
@@ -203,6 +205,8 @@ class CommentStore:
 
             # Remove from all locations based on comment type
             if comment.target.is_range_comment:
+                if comment.target.line_range is None:
+                    raise ValueError("Range comment must have line_range set")
                 start, end = comment.target.line_range
                 for line_num in range(start, end + 1):
                     line_key = (comment.target.file_path, line_num)
@@ -246,6 +250,8 @@ class CommentStore:
                 raise KeyError(f"No comment with id {comment_id} found")
 
             comment = self._unique_comments[comment_id]
+            if comment.target.line_range is None:
+                raise ValueError("Range comment must have line_range set")
             start, end = comment.target.line_range
 
             # Remove from all lines in range

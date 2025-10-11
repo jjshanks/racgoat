@@ -43,9 +43,9 @@ class TestSingleFileDiff:
             assert diff_pane is not None
 
             # Verify: Single file is selected and displayed
-            assert files_pane.file_count == 1
-            assert files_pane.get_selected_file().file_path == "src/single.py"
-            assert diff_pane.current_file.file_path == "src/single.py"
+            assert files_pane.file_count == 1  # type: ignore[unresolved-attribute]
+            assert files_pane.get_selected_file().file_path == "src/single.py"  # type: ignore[unresolved-attribute]
+            assert diff_pane.current_file.file_path == "src/single.py"  # type: ignore[unresolved-attribute]
 
 
 class TestLongPathTruncation:
@@ -75,8 +75,8 @@ class TestLongPathTruncation:
             files_pane = app.query_one("#files-pane")
 
             # Verify: File is in the list
-            assert files_pane.file_count == 1
-            selected = files_pane.get_selected_file()
+            assert files_pane.file_count == 1  # type: ignore[unresolved-attribute]
+            selected = files_pane.get_selected_file()  # type: ignore[unresolved-attribute]
             assert selected.file_path == long_path
 
             # The truncation happens in display, not in the model

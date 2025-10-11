@@ -43,12 +43,12 @@ class TestANSIColorRendering:
             diff_pane = app.query_one("#diff-pane")
 
             # Verify: File is displayed
-            assert diff_pane.current_file is not None
-            assert diff_pane.current_file.file_path == "src/test.py"
+            assert diff_pane.current_file is not None  # type: ignore[unresolved-attribute]
+            assert diff_pane.current_file.file_path == "src/test.py"  # type: ignore[unresolved-attribute]
 
             # Verify: Hunk data is correctly stored
-            assert len(diff_pane.current_file.hunks) == 1
-            hunk = diff_pane.current_file.hunks[0]
+            assert len(diff_pane.current_file.hunks) == 1  # type: ignore[unresolved-attribute]
+            hunk = diff_pane.current_file.hunks[0]  # type: ignore[unresolved-attribute]
 
             # Verify all three change types are present in the hunk
             assert hunk.lines[0] == (' ', 'def foo():'), "Context line 1"

@@ -240,7 +240,7 @@ class TestEditContract:
             # Clear the input text
             modal_screen = app.screen_stack[-1]
             input_widget = modal_screen.query_one("#comment-input")
-            input_widget.value = ""  # Clear all text
+            input_widget.value = ""  # type: ignore[unresolved-attribute]  # Clear all text
 
             # Submit the empty text (triggers delete confirmation)
             await pilot.press("enter")

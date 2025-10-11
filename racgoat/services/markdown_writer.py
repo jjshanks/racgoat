@@ -55,6 +55,8 @@ def extract_code_context(
         target_start = line_number
         target_end = line_number
     else:
+        if line_range is None:
+            return None
         target_start, target_end = line_range
 
     # Find hunk containing target line(s)

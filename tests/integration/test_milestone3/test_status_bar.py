@@ -107,7 +107,7 @@ class TestStatusBar:
             diff_pane = app.query_one("#diff-pane")
 
             # Initial focus should be on files pane
-            assert files_pane._list_view.has_focus
+            assert files_pane._list_view.has_focus  # type: ignore[unresolved-attribute]
 
             # Press Tab to switch focus
             await pilot.press("tab")
@@ -124,7 +124,7 @@ class TestStatusBar:
             await pilot.pause()
 
             # Focus back on files pane
-            assert files_pane._list_view.has_focus
+            assert files_pane._list_view.has_focus  # type: ignore[unresolved-attribute]
 
     @pytest.mark.asyncio
     async def test_status_bar_shows_select_mode_keys(self):

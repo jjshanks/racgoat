@@ -95,10 +95,10 @@ class TestAppRunTUI:
             diff_pane = app.query_one("#diff-pane")
 
             # First file should be selected
-            assert files_pane.get_selected_file().file_path == "file1.py"
+            assert files_pane.get_selected_file().file_path == "file1.py"  # type: ignore[unresolved-attribute]
 
             # First file should be displayed in diff pane
-            assert diff_pane.current_file.file_path == "file1.py"
+            assert diff_pane.current_file.file_path == "file1.py"  # type: ignore[unresolved-attribute]
 
 
 class TestAppQuitBinding:

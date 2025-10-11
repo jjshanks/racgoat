@@ -108,7 +108,7 @@ diff --git a/test.py b/test.py
 """
     from racgoat.parser.models import DiffSummary
 
-    summary = parse_diff(diff_content.splitlines())
+    summary = parse_diff(list(diff_content.splitlines()))
 
     assert len(summary.files) == 1
     assert summary.files[0].file_path == "test.py"
@@ -131,7 +131,7 @@ diff --git a/test.py b/test.py
 """
     from racgoat.parser.models import DiffSummary
 
-    summary = parse_diff(diff_content.splitlines())
+    summary = parse_diff(list(diff_content.splitlines()))
 
     assert len(summary.files) == 1
     assert summary.files[0].removed_lines == 3  # Three removed lines
@@ -152,7 +152,7 @@ diff --git a/test.py b/test.py
 """
     from racgoat.parser.models import DiffSummary
 
-    summary = parse_diff(diff_content.splitlines())
+    summary = parse_diff(list(diff_content.splitlines()))
 
     # Should count only the + lines, not the @@ markers
     assert summary.files[0].added_lines == 2
@@ -189,7 +189,7 @@ diff --git a/README.md b/README.md
 """
     from racgoat.parser.models import DiffSummary
 
-    summary = parse_diff(diff_content.splitlines())
+    summary = parse_diff(list(diff_content.splitlines()))
 
     assert len(summary.files) == 3
 
@@ -235,7 +235,7 @@ diff --git a/test.py b/test.py
 """
     from racgoat.parser.models import DiffSummary
 
-    summary = parse_diff(diff_content.splitlines())
+    summary = parse_diff(list(diff_content.splitlines()))
 
     assert summary.files[0].added_lines == 1
     assert summary.files[0].removed_lines == 1
@@ -270,7 +270,7 @@ index 0000000..abcdefg
 """
     from racgoat.parser.models import DiffSummary
 
-    summary = parse_diff(diff_content.splitlines())
+    summary = parse_diff(list(diff_content.splitlines()))
 
     assert len(summary.files) == 1
     assert summary.files[0].file_path == "new_file.py"
@@ -293,7 +293,7 @@ index abcdefg..0000000
 """
     from racgoat.parser.models import DiffSummary
 
-    summary = parse_diff(diff_content.splitlines())
+    summary = parse_diff(list(diff_content.splitlines()))
 
     assert len(summary.files) == 1
     assert summary.files[0].file_path == "old_file.py"

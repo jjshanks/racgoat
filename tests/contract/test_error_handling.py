@@ -167,10 +167,10 @@ def test_size_limit_enforcement():
     with pytest.raises(DiffTooLargeError) as exc_info:
         parser.parse(large_diff)
 
-    assert exc_info.value.actual_lines == 12500
-    assert exc_info.value.limit == 10000
-    assert "🦝" in exc_info.value.message
-    assert "🐐" in exc_info.value.message
+    assert exc_info.value.actual_lines == 12500  # type: ignore[unresolved-attribute]
+    assert exc_info.value.limit == 10000  # type: ignore[unresolved-attribute]
+    assert "🦝" in exc_info.value.message  # type: ignore[unresolved-attribute]
+    assert "🐐" in exc_info.value.message  # type: ignore[unresolved-attribute]
 
 
 # T012: Contract test - Malformed hunk display in DiffPane

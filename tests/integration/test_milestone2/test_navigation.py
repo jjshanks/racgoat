@@ -48,32 +48,32 @@ class TestArrowKeyNavigation:
             diff_pane = app.query_one("#diff-pane")
 
             # Verify initial state: file1 selected
-            assert files_pane.get_selected_file().file_path == "file1.py"
-            assert diff_pane.current_file.file_path == "file1.py"
+            assert files_pane.get_selected_file().file_path == "file1.py"  # type: ignore[unresolved-attribute]
+            assert diff_pane.current_file.file_path == "file1.py"  # type: ignore[unresolved-attribute]
 
             # Action: Press down arrow to select file2
             await pilot.press("down")
             await pilot.pause()
 
             # Verify: file2 selected and displayed
-            assert files_pane.get_selected_file().file_path == "file2.py"
-            assert diff_pane.current_file.file_path == "file2.py"
+            assert files_pane.get_selected_file().file_path == "file2.py"  # type: ignore[unresolved-attribute]
+            assert diff_pane.current_file.file_path == "file2.py"  # type: ignore[unresolved-attribute]
 
             # Action: Press down arrow again to select file3
             await pilot.press("down")
             await pilot.pause()
 
             # Verify: file3 selected and displayed
-            assert files_pane.get_selected_file().file_path == "file3.py"
-            assert diff_pane.current_file.file_path == "file3.py"
+            assert files_pane.get_selected_file().file_path == "file3.py"  # type: ignore[unresolved-attribute]
+            assert diff_pane.current_file.file_path == "file3.py"  # type: ignore[unresolved-attribute]
 
             # Action: Press up arrow to go back to file2
             await pilot.press("up")
             await pilot.pause()
 
             # Verify: file2 selected again
-            assert files_pane.get_selected_file().file_path == "file2.py"
-            assert diff_pane.current_file.file_path == "file2.py"
+            assert files_pane.get_selected_file().file_path == "file2.py"  # type: ignore[unresolved-attribute]
+            assert diff_pane.current_file.file_path == "file2.py"  # type: ignore[unresolved-attribute]
 
 
 class TestTabFocusSwitching:
@@ -109,7 +109,7 @@ class TestTabFocusSwitching:
             diff_pane = app.query_one("#diff-pane")
 
             # Verify initial state: files pane's ListView has focus
-            assert files_pane._list_view.has_focus
+            assert files_pane._list_view.has_focus  # type: ignore[unresolved-attribute]
 
             # Action: Press Tab to switch focus
             await pilot.press("tab")
@@ -123,4 +123,4 @@ class TestTabFocusSwitching:
             await pilot.pause()
 
             # Verify: files pane's ListView has focus again
-            assert files_pane._list_view.has_focus
+            assert files_pane._list_view.has_focus  # type: ignore[unresolved-attribute]

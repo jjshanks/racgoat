@@ -263,7 +263,7 @@ class TestHelpContract:
 
             # Test 1: Help accessible from files pane
             files_pane = app.query_one("#files-pane")
-            assert files_pane._list_view.has_focus
+            assert files_pane._list_view.has_focus  # type: ignore[unresolved-attribute]
 
             await pilot.press("question_mark")
             await pilot.pause()

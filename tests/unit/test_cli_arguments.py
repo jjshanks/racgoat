@@ -69,7 +69,7 @@ def test_cli_arguments_validation_non_empty(monkeypatch):
         parse_arguments()
 
     # argparse exits with code 2 for invalid arguments
-    assert exc_info.value.code == 2
+    assert exc_info.value.code == 2  # type: ignore[unresolved-attribute]
 
 
 def test_cli_arguments_unknown_flag(monkeypatch):
@@ -79,7 +79,7 @@ def test_cli_arguments_unknown_flag(monkeypatch):
     with pytest.raises(SystemExit) as exc_info:
         parse_arguments()
 
-    assert exc_info.value.code == 2
+    assert exc_info.value.code == 2  # type: ignore[unresolved-attribute]
 
 
 def test_cli_arguments_help_flag(monkeypatch):
@@ -90,7 +90,7 @@ def test_cli_arguments_help_flag(monkeypatch):
         parse_arguments()
 
     # Help exits with code 0
-    assert exc_info.value.code == 0
+    assert exc_info.value.code == 0  # type: ignore[unresolved-attribute]
 
 
 def test_cli_arguments_special_chars_in_filename(monkeypatch):
