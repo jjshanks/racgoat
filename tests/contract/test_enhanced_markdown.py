@@ -217,11 +217,10 @@ class TestCodeContext:
 
         output = serialize_review_session(session, diff_summary=diff_summary)
 
-        # Verify context block
+        # Verify context block (diff format, not line numbers)
         assert "**Context**:" in output, "Context header missing"
-        assert "```" in output, "Code block markers missing"
-        assert "3 | " in output, "Line number formatting incorrect"
-        assert "db.query(user.email)" in output, "Code content missing"
+        assert "```diff" in output, "Diff code block markers missing"
+        assert "+    db.query(user.email)" in output, "Code content with diff marker missing"
 
     def test_no_code_context_without_diff_summary(self):
         """Code context must be omitted when diff_summary not provided."""
@@ -237,11 +236,12 @@ class TestCodeContext:
         assert "**Context**:" not in output, "Context should not be present without diff_summary"
         assert output.count("```") == 0, "Code blocks should not be present without diff_summary"
 
-    def test_file_comment_no_context(self):
-        """File comments must NOT have code context."""
+    def test_file_comment_has_stats_not_context(self):
+        """File comments must have statistical summary, NOT code context."""
         diff_file = DiffFile(
             file_path="test.py",
             added_lines=2,
+            removed_lines=0,
             hunks=[
                 DiffHunk(
                     old_start=1,
@@ -260,10 +260,13 @@ class TestCodeContext:
 
         output = serialize_review_session(session, diff_summary=diff_summary)
 
-        # File comment should not have context
-        # Count context blocks - should be 0
+        # File comment should have statistical summary
+        assert "**File changes**:" in output, "File comment should have statistical summary"
+        assert "1 hunks, +2 -0 lines" in output, "Statistical summary incorrect"
+        # File comment should not have diff context
         context_count = output.count("**Context**:")
         assert context_count == 0, "File comment should not have code context"
+        assert "```diff" not in output, "File comment should not have diff block"
 
 
 class TestHorizontalRules:

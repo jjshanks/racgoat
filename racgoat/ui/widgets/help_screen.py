@@ -39,14 +39,14 @@ HELP_ENTRIES = [
     # Commenting
     HelpEntry(
         key="c",
-        action="Add comment",
-        description="Add comment for current line",
+        action="Add line comment",
+        description="Add comment for current line (line-specific)",
         context="Commenting"
     ),
     HelpEntry(
-        key="Shift+C",
+        key="Shift+C or f",
         action="Add file comment",
-        description="Add comment for entire file",
+        description="Add comment for entire file (file-level, not line-specific)",
         context="Commenting"
     ),
     HelpEntry(

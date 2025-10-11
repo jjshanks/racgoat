@@ -35,6 +35,14 @@ class CommentInput(ModalScreen[str | None]):
         padding: 1 2;
     }}
 
+    #comment-type {{
+        width: 100%;
+        content-align: center middle;
+        color: $success;
+        margin-bottom: 1;
+        text-style: bold;
+    }}
+
     #comment-prompt {{
         width: 100%;
         content-align: center middle;
@@ -77,6 +85,7 @@ class CommentInput(ModalScreen[str | None]):
         self,
         prompt: str = "Enter comment:",
         prefill: str = "",
+        comment_type: str | None = None,
         name: str | None = None,
         id: str | None = None,
     ) -> None:
@@ -85,17 +94,31 @@ class CommentInput(ModalScreen[str | None]):
         Args:
             prompt: Prompt text to display
             prefill: Pre-filled text (for editing existing comments)
+            comment_type: Type of comment ("LINE", "RANGE", "FILE") for prominent display
             name: Widget name (optional)
             id: Widget ID (optional)
         """
         super().__init__(name=name, id=id)
         self.prompt = prompt
         self.prefill = prefill
+        self.comment_type = comment_type
         self._input_widget: Input | None = None
 
     def compose(self) -> ComposeResult:
         """Compose the modal dialog."""
         with Container(id="comment-dialog"):
+            # Show comment type prominently if provided
+            if self.comment_type:
+                type_icons = {
+                    "LINE": "📍",
+                    "RANGE": "📏",
+                    "FILE": "📄"
+                }
+                icon = type_icons.get(self.comment_type, "💬")
+                yield Label(
+                    f"{icon} {self.comment_type} COMMENT",
+                    id="comment-type"
+                )
             yield Label(self.prompt, id="comment-prompt")
             # Add hint for deletion if this is an edit operation (has prefill)
             if self.prefill:

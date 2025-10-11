@@ -22,13 +22,13 @@ from racgoat.parser.models import DiffFile, DiffHunk, DiffSummary
 from racgoat.constants import DEFAULT_CONTEXT_LINES
 
 
-def extract_code_context(
+def extract_diff_segment(
     diff_file: DiffFile,
     line_number: int | None = None,
     line_range: tuple[int, int] | None = None,
     context_lines: int = DEFAULT_CONTEXT_LINES
 ) -> str | None:
-    """Extract code context from diff hunks for a comment.
+    """Extract diff segment from hunks for a comment.
 
     Args:
         diff_file: DiffFile containing hunks to search
@@ -37,20 +37,21 @@ def extract_code_context(
         context_lines: Number of context lines before/after target (default: DEFAULT_CONTEXT_LINES)
 
     Returns:
-        Formatted code context with line numbers, or None if unavailable
+        Formatted diff segment with +/- markers, or None if unavailable
 
     Logic:
         - For line comments: Extract ±context_lines around line_number
         - For range comments: Extract ±context_lines around range boundaries
         - For file comments (both None): Return None
-        - Handle edge cases: file boundaries, hunk boundaries, malformed hunks
-        - Format: "{line_num} | {code_content}"
+        - Include removed lines ('-') in the context window
+        - Format: "{marker}{content}" (no space after marker)
+        - Markers: '+' for added, '-' for removed, ' ' for context
     """
-    # File-level comment - no context
+    # File-level comment - no segment
     if line_number is None and line_range is None:
         return None
 
-    # Determine target line(s)
+    # Determine target range
     if line_number is not None:
         target_start = line_number
         target_end = line_number
@@ -81,28 +82,48 @@ def extract_code_context(
     if relevant_hunk is None:
         return None
 
-    # Build line-by-line context with line numbers
-    lines = []
-    current_line = relevant_hunk.new_start
+    # Build diff segment with line markers
+    diff_lines = []
+    current_new_line = relevant_hunk.new_start
 
     # Calculate context window
     context_start = max(target_start - context_lines, relevant_hunk.new_start)
     context_end = target_end + context_lines
 
     for change_type, content in relevant_hunk.lines:
-        # Only process added/context lines (not removed lines)
-        if change_type in ('+', ' '):
-            # Include line if within context window
-            if context_start <= current_line <= context_end:
-                lines.append(f"{current_line} | {content}")
-            current_line += 1
-        # Skip removed lines (don't increment post-change line number)
+        in_window = False
 
-    # Format as code block
-    if not lines:
+        # Determine if line is within context window
+        if change_type == '-':
+            # Removed line: associate with current new_line position
+            in_window = (context_start <= current_new_line <= context_end)
+        elif change_type in ('+', ' '):
+            # Added or context line: check against new_line position
+            in_window = (context_start <= current_new_line <= context_end)
+            current_new_line += 1
+
+        # Include line if in window
+        if in_window:
+            diff_lines.append(f"{change_type}{content}")
+
+    # Format as diff segment
+    if not diff_lines:
         return None
 
-    return "\n".join(lines)
+    return "\n".join(diff_lines)
+
+
+def format_file_stats(diff_file: DiffFile) -> str:
+    """Format statistical summary for file-level comments.
+
+    Args:
+        diff_file: DiffFile containing hunks and line counts
+
+    Returns:
+        String like "5 hunks, +120 -45 lines"
+    """
+    hunk_count = len(diff_file.hunks)
+    return f"{hunk_count} hunks, +{diff_file.added_lines} -{diff_file.removed_lines} lines"
 
 
 def serialize_review_session(session: ReviewSession, diff_summary: DiffSummary | None = None) -> str:
@@ -219,20 +240,28 @@ def serialize_review_session(session: ReviewSession, diff_summary: DiffSummary |
             # Code context (if available)
             if diff_file:
                 if isinstance(comment, LineComment):
-                    context = extract_code_context(diff_file, line_number=comment.line_number)
+                    diff_segment = extract_diff_segment(diff_file, line_number=comment.line_number)
+                    if diff_segment:
+                        lines.append("**Context**:")
+                        lines.append("```diff")
+                        lines.append(diff_segment)
+                        lines.append("```")
+                        lines.append("")
                 elif isinstance(comment, RangeComment):
-                    context = extract_code_context(
+                    diff_segment = extract_diff_segment(
                         diff_file,
                         line_range=(comment.start_line, comment.end_line)
                     )
-                else:
-                    context = None
-
-                if context:
-                    lines.append("**Context**:")
-                    lines.append("```")
-                    lines.append(context)
-                    lines.append("```")
+                    if diff_segment:
+                        lines.append("**Context**:")
+                        lines.append("```diff")
+                        lines.append(diff_segment)
+                        lines.append("```")
+                        lines.append("")
+                elif isinstance(comment, FileComment):
+                    # File-level comment shows statistical summary
+                    stats = format_file_stats(diff_file)
+                    lines.append(f"**File changes**: {stats}")
                     lines.append("")
 
             # Horizontal rule separator (not after last comment in file)

@@ -101,6 +101,7 @@ class RacGoatApp(App):
         Binding("tab", "cycle_focus", "Switch", show=True),
         Binding("c", "add_line_comment", "Add Comment", show=True),
         Binding("C", "add_file_comment", "File Comment", show=True),
+        Binding("f", "add_file_comment", "File Comment (alt)", show=False),  # Alternative for Shift+C
         Binding("s", "enter_select_mode", "Select", show=True),
         Binding("e", "edit_comment", "Edit", show=True),
         Binding("escape", "cancel_select_mode", "Cancel/Exit", show=False),

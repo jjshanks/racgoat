@@ -117,10 +117,10 @@ class TestEnhancedOutputIntegration:
             assert 'lines: 3-5' in content  # Range comment
             # File comment should not have line/lines field
 
-            # Verify code context
+            # Verify code context (diff format)
             assert '**Context**:' in content
-            assert '```' in content
-            assert '2 | def login(user, password):' in content
+            assert '```diff' in content
+            assert '+def login(user, password):' in content
 
             # Verify comment text
             assert "Add input validation before database query" in content
@@ -217,10 +217,10 @@ class TestEnhancedOutputIntegration:
             with open(output_file, 'r') as f:
                 content = f.read()
 
-            # Should still have context (just limited)
-            assert "1 | line1" in content
+            # Should still have context (diff format)
+            assert "+line1" in content
             # Should include following line as context
-            assert "2 | line2" in content
+            assert "+line2" in content
 
     @pytest.mark.asyncio
     async def test_multiple_files_sequential_ids(self):

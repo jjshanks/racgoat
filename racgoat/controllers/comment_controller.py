@@ -104,7 +104,12 @@ class CommentController:
         from racgoat.ui.widgets.comment_input import CommentInput
 
         self.app.push_screen(
-            CommentInput(prompt=prompt_text, prefill=prefill), handle_comment_result
+            CommentInput(
+                prompt=prompt_text,
+                prefill=prefill,
+                comment_type=comment_type.value.upper()
+            ),
+            handle_comment_result
         )
 
     def action_add_line_comment(self) -> None:
@@ -282,7 +287,14 @@ class CommentController:
         # Prompt for comment text
         prompt = f"Comment on lines {start_line}-{end_line}:"
         from racgoat.ui.widgets.comment_input import CommentInput
-        self.app.push_screen(CommentInput(prompt=prompt, prefill=""), handle_comment_result)
+        self.app.push_screen(
+            CommentInput(
+                prompt=prompt,
+                prefill="",
+                comment_type="RANGE"
+            ),
+            handle_comment_result
+        )
 
     def action_edit_comment(self) -> None:
         """Edit or delete comment at cursor (e key).

@@ -357,7 +357,11 @@ class DiffPane(VerticalScroll):
         # Show edit dialog with pre-filled text
         if self.app:
             self.app.push_screen(
-                CommentInput(prompt="Edit comment:", prefill=existing_comment.text),
+                CommentInput(
+                    prompt="Edit comment:",
+                    prefill=existing_comment.text,
+                    comment_type=existing_comment.comment_type.value.upper()
+                ),
                 callback=lambda result: self._handle_edit_result(result, existing_comment)
             )
 
